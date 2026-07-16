@@ -86,15 +86,15 @@ func TestFetch_AcceptsValidURL(t *testing.T) {
 	}
 }
 
-// TestFetch_ValidURLReturnsRawHTML asserts the core T2 behaviour: a valid URL
-// is fetched exactly once through the injected client, and the response's raw
-// HTML body is returned in Result.Content.
-func TestFetch_ValidURLReturnsRawHTML(t *testing.T) {
-	const wantHTML = "<html><body><h1>Hello</h1></body></html>"
-	client := &fakeHTTPClient{respBody: wantHTML}
+// TestFetch_ValidURLCallsClientOnce asserts the core retrieval behaviour: a
+// valid URL is fetched exactly once through the injected client with the
+// original URL. (Content shape — extracted markdown — is asserted in
+// TestFetch_ReturnsExtractedMarkdown and the extract tests.)
+func TestFetch_ValidURLCallsClientOnce(t *testing.T) {
+	client := &fakeHTTPClient{respBody: "<html><body><article><h1>Hi</h1><p>Body text here.</p></article></body></html>"}
 	params := Params{URL: "https://example.com/page"}
 
-	result, err := Fetch(context.Background(), params, client)
+	_, err := Fetch(context.Background(), params, client)
 
 	if err != nil {
 		t.Fatalf("expected no error for valid URL, got %v", err)
@@ -104,13 +104,6 @@ func TestFetch_ValidURLReturnsRawHTML(t *testing.T) {
 	}
 	if client.lastURL != "https://example.com/page" {
 		t.Errorf("client called with %q, want the original URL", client.lastURL)
-	}
-	if result == nil || result.Content != wantHTML {
-		var got string
-		if result != nil {
-			got = result.Content
-		}
-		t.Errorf("result content = %q, want %q", got, wantHTML)
 	}
 }
 
@@ -135,5 +128,34 @@ func TestFetch_SendsRealisticBrowserHeaders(t *testing.T) {
 	}
 	if acceptLang := client.lastHeaders.Get("Accept-Language"); acceptLang == "" {
 		t.Errorf("Accept-Language header missing; expected a non-empty value")
+	}
+}
+
+// TestFetch_ReturnsExtractedMarkdown asserts that Fetch runs the extraction
+// pipeline: given an article-type HTML response, it returns the extracted
+// title and markdown body (not raw HTML), with boilerplate dropped.
+func TestFetch_ReturnsExtractedMarkdown(t *testing.T) {
+	const articleHTML = `<!DOCTYPE html>
+<html><head><title>My Article — Site</title></head>
+<body>
+<nav><a href="/">Home</a></nav>
+<article><h1>My Article</h1><p>The main substance of this article goes here, and it is long enough to clear the readability threshold that separates real articles from nav bleed-through.</p></article>
+<footer>© 2026</footer>
+</body></html>`
+	client := &fakeHTTPClient{respBody: articleHTML}
+
+	result, err := Fetch(context.Background(), Params{URL: "https://example.com/a"}, client)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !strings.Contains(result.Title, "My Article") {
+		t.Errorf("title = %q, want it to contain \"My Article\"", result.Title)
+	}
+	if !strings.Contains(result.Content, "main substance of this article") {
+		t.Errorf("content should be extracted markdown with the article body; got:\n%s", result.Content)
+	}
+	if strings.Contains(result.Content, "<html") {
+		t.Errorf("content should be markdown, not raw HTML; got:\n%s", result.Content)
 	}
 }

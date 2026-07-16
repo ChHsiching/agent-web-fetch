@@ -22,10 +22,12 @@ type Params struct {
 	URL string
 }
 
-// Result holds the output of a fetch. Content carries the retrieved body;
-// extraction into model-friendly form (markdown) arrives in a later ticket.
+// Result holds the output of a fetch. Title is the extracted article title
+// (possibly empty for non-article pages). Content is the model-friendly
+// markdown body — extracted by Readability, falling back to full-document
+// markdown so the reader never returns empty.
 type Result struct {
-	// Content holds the raw retrieved body of the response.
+	Title   string
 	Content string
 }
 
@@ -76,7 +78,11 @@ func Fetch(ctx context.Context, params Params, client HTTPClient) (*Result, erro
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Content: string(body)}, nil
+	title, markdown, err := extract(string(body), params.URL)
+	if err != nil {
+		return nil, err
+	}
+	return &Result{Title: title, Content: markdown}, nil
 }
 
 // isFetchableScheme reports whether a scheme is one the Web Reader will fetch.
