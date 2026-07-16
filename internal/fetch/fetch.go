@@ -8,18 +8,23 @@ package fetch
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
-// Params holds the inputs to a single fetch. Only URL is consumed by the
-// URL-validation path; later tickets add fields as they implement their
-// behaviour.
+// DefaultTimeout is applied when Params.Timeout is zero. Per the spec it is 30
+// seconds — generous enough for a slow public page, short enough that a hung
+// site never blocks the server.
+const DefaultTimeout = 30 * time.Second
+
+// Params holds the inputs to a single fetch. Timeout bounds the request (zero
+// means use DefaultTimeout). Later tickets add more fields.
 type Params struct {
-	URL string
+	URL     string
+	Timeout time.Duration
 }
 
 // Result holds the output of a fetch. Title is the extracted article title
@@ -51,36 +56,63 @@ var browserHeaders = http.Header{
 
 // Fetch retrieves the content at params.URL. It validates the URL first: a
 // malformed, non-absolute, or non-http(s) URL returns an InvalidURLError
-// without issuing any request. A Web Reader needs an absolute http(s) target.
+// without issuing any request.
 //
-// Once validated, the URL is fetched through the injected client with
-// realistic browser headers, and the raw response body is returned.
-// Error/timeout/panic handling arrives in a later ticket.
-func Fetch(ctx context.Context, params Params, client HTTPClient) (*Result, error) {
+// The request is bounded by params.Timeout (default 30s). A non-2xx response
+// returns an HTTPError; a non-HTML content type returns an
+// UnsupportedContentError; a transport failure returns a FetchError. Any panic
+// during the fetch or extract path is recovered and returned as a PanicError,
+// so the process never crashes (ADR-0005).
+func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Result, err error) {
+	// Recover any panic so the server process stays alive. A crash-restart is
+	// itself a connection-failure risk (ADR-0005).
+	defer func() {
+		if r := recover(); r != nil {
+			result, err = nil, &PanicError{Recovered: r}
+		}
+	}()
+
 	parsed, err := url.Parse(params.URL)
 	if err != nil || !isFetchableScheme(parsed.Scheme) || parsed.Host == "" {
 		return nil, &InvalidURLError{URL: params.URL}
 	}
 
+	timeout := params.Timeout
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, params.URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, &FetchError{Err: err}
 	}
 	req.Header = browserHeaders.Clone()
 
 	resp, err := client.Do(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, classifyTransportErr(err, params.URL)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &HTTPError{StatusCode: resp.StatusCode, Reason: http.StatusText(resp.StatusCode)}
+	}
+
+	ct := resp.Header.Get("Content-Type")
+	if !contentTypeIsHTML(ct) {
+		return nil, &UnsupportedContentError{ContentType: ct}
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, classifyTransportErr(err, params.URL)
 	}
+
 	title, markdown, err := extract(string(body), params.URL)
 	if err != nil {
-		return nil, err
+		return nil, &FetchError{Err: err}
 	}
 	return &Result{Title: title, Content: markdown}, nil
 }
@@ -94,22 +126,4 @@ func isFetchableScheme(scheme string) bool {
 	default:
 		return false
 	}
-}
-
-// InvalidURLError is the structured error returned for a malformed URL. It is
-// the "invalid url" tool-error the agent receives — distinct from transport or
-// HTTP errors so callers can tell failure modes apart.
-type InvalidURLError struct {
-	URL string
-}
-
-func (e *InvalidURLError) Error() string {
-	return "invalid url: " + e.URL
-}
-
-// IsInvalidURLError reports whether err is an InvalidURLError. It is the typed
-// check callers use rather than a brittle string comparison.
-func IsInvalidURLError(err error) bool {
-	var target *InvalidURLError
-	return errors.As(err, &target)
 }

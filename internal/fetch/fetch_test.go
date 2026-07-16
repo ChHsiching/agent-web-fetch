@@ -6,29 +6,52 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 // fakeHTTPClient is a stand-in for a real HTTP client so tests never reach the
 // network. It records how many times Do was called, with which URL and headers,
-// and returns the configured body/status.
+// and returns the configured body/status/content-type. Set err to simulate a
+// transport error; set delay to simulate a slow response that may exceed the
+// caller's timeout.
 type fakeHTTPClient struct {
 	calls       int
 	lastURL     string
 	lastHeaders http.Header
 	respBody    string
 	respStatus  int
+	respCT      string // Content-Type; defaults to text/html
+	err         error  // if set, returned instead of a response
+	delay       time.Duration
 }
 
 func (f *fakeHTTPClient) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
 	f.calls++
 	f.lastURL = req.URL.String()
 	f.lastHeaders = req.Header.Clone()
+	if f.err != nil {
+		return nil, f.err
+	}
+	// Honour cancellation: if the context deadline passes during a simulated
+	// delay, report it like a real client would.
+	if f.delay > 0 {
+		select {
+		case <-time.After(f.delay):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 	status := f.respStatus
 	if status == 0 {
 		status = 200
 	}
+	ct := f.respCT
+	if ct == "" {
+		ct = "text/html; charset=utf-8"
+	}
 	return &http.Response{
 		StatusCode: status,
+		Header:     http.Header{"Content-Type": {ct}},
 		Body:       io.NopCloser(strings.NewReader(f.respBody)),
 	}, nil
 }
