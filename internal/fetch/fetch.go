@@ -9,6 +9,7 @@ package fetch
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,37 +22,61 @@ type Params struct {
 	URL string
 }
 
-// Result holds the output of a fetch. For now its shape is declared but Fetch
-// does not yet populate it — retrieval and extraction arrive in later tickets.
+// Result holds the output of a fetch. Content carries the retrieved body;
+// extraction into model-friendly form (markdown) arrives in a later ticket.
 type Result struct {
-	// Content will hold the retrieved content once the fetch path is wired in
-	// by a later ticket. Left intentionally empty here.
+	// Content holds the raw retrieved body of the response.
 	Content string
 }
 
 // HTTPClient is the seam at which the network is injected. It executes a
 // fully-formed request, so the caller controls headers and method; the client
 // only provides transport. Tests substitute a fake so no test ever reaches the
-// network. Fetch does not yet call it — the fetch path arrives in the next
-// ticket — but the seam is declared here so the interface is stable.
+// network.
 type HTTPClient interface {
 	Do(ctx context.Context, req *http.Request) (*http.Response, error)
 }
 
-// Fetch retrieves the content at params.URL. At this stage it only validates
-// the URL: a malformed or non-absolute URL returns an InvalidURLError without
-// issuing any request. A Web Reader needs an absolute URL (a scheme and a
-// host) — bare paths or fragments are not fetchable targets.
+// browserHeaders are the realistic headers a modern browser sends, so public
+// sites with light anti-bot defenses treat the request as ordinary traffic.
+// Defined once here per ADR-0002 (anonymous + stealth: the disguise is part
+// of the fetch path, absorbed into the binary rather than configured by users).
+var browserHeaders = http.Header{
+	"User-Agent":      {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"},
+	"Accept":          {"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
+	"Accept-Language": {"en-US,en;q=0.9"},
+}
+
+// Fetch retrieves the content at params.URL. It validates the URL first: a
+// malformed, non-absolute, or non-http(s) URL returns an InvalidURLError
+// without issuing any request. A Web Reader needs an absolute http(s) target.
 //
-// Actual retrieval through the injected client is added by the next ticket.
+// Once validated, the URL is fetched through the injected client with
+// realistic browser headers, and the raw response body is returned.
+// Error/timeout/panic handling arrives in a later ticket.
 func Fetch(ctx context.Context, params Params, client HTTPClient) (*Result, error) {
 	parsed, err := url.Parse(params.URL)
 	if err != nil || !isFetchableScheme(parsed.Scheme) || parsed.Host == "" {
 		return nil, &InvalidURLError{URL: params.URL}
 	}
-	// Retrieval arrives in the next ticket. Validation is the whole job of
-	// this slice; reaching this point means the URL is valid.
-	return &Result{}, nil
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, params.URL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = browserHeaders.Clone()
+
+	resp, err := client.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return &Result{Content: string(body)}, nil
 }
 
 // isFetchableScheme reports whether a scheme is one the Web Reader will fetch.

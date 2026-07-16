@@ -2,21 +2,35 @@ package fetch
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 )
 
 // fakeHTTPClient is a stand-in for a real HTTP client so tests never reach the
-// network. It records calls so tests can prove Fetch did not issue a request.
-// Fetch does not call it during URL validation yet; the fetch path arrives in
-// the next ticket, where this fake will be fleshed out.
+// network. It records how many times Do was called, with which URL and headers,
+// and returns the configured body/status.
 type fakeHTTPClient struct {
-	calls int
+	calls       int
+	lastURL     string
+	lastHeaders http.Header
+	respBody    string
+	respStatus  int
 }
 
 func (f *fakeHTTPClient) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
 	f.calls++
-	return &http.Response{StatusCode: 200}, nil
+	f.lastURL = req.URL.String()
+	f.lastHeaders = req.Header.Clone()
+	status := f.respStatus
+	if status == 0 {
+		status = 200
+	}
+	return &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(strings.NewReader(f.respBody)),
+	}, nil
 }
 
 // TestFetch_RejectsMalformedURL asserts the core T1 behaviour: a malformed URL
@@ -56,8 +70,8 @@ func TestFetch_RejectsNonAbsoluteURL(t *testing.T) {
 }
 
 // TestFetch_AcceptsValidURL asserts that a well-formed absolute URL passes
-// validation and does not error. Retrieval itself is the next ticket's job;
-// here we only assert the URL is accepted (no error) and the result is non-nil.
+// validation and returns a non-nil result without error. (Raw-HTML retrieval
+// is asserted separately in TestFetch_ValidURLReturnsRawHTML.)
 func TestFetch_AcceptsValidURL(t *testing.T) {
 	client := &fakeHTTPClient{}
 	params := Params{URL: "https://example.com/page"}
@@ -69,5 +83,57 @@ func TestFetch_AcceptsValidURL(t *testing.T) {
 	}
 	if result == nil {
 		t.Fatal("expected a non-nil result for a valid URL")
+	}
+}
+
+// TestFetch_ValidURLReturnsRawHTML asserts the core T2 behaviour: a valid URL
+// is fetched exactly once through the injected client, and the response's raw
+// HTML body is returned in Result.Content.
+func TestFetch_ValidURLReturnsRawHTML(t *testing.T) {
+	const wantHTML = "<html><body><h1>Hello</h1></body></html>"
+	client := &fakeHTTPClient{respBody: wantHTML}
+	params := Params{URL: "https://example.com/page"}
+
+	result, err := Fetch(context.Background(), params, client)
+
+	if err != nil {
+		t.Fatalf("expected no error for valid URL, got %v", err)
+	}
+	if client.calls != 1 {
+		t.Errorf("expected exactly one HTTP request, got %d", client.calls)
+	}
+	if client.lastURL != "https://example.com/page" {
+		t.Errorf("client called with %q, want the original URL", client.lastURL)
+	}
+	if result == nil || result.Content != wantHTML {
+		var got string
+		if result != nil {
+			got = result.Content
+		}
+		t.Errorf("result content = %q, want %q", got, wantHTML)
+	}
+}
+
+// TestFetch_SendsRealisticBrowserHeaders asserts that the outgoing request
+// carries headers that make it look like a real browser, so public sites with
+// light anti-bot defenses stay fetchable (per ADR-0002).
+func TestFetch_SendsRealisticBrowserHeaders(t *testing.T) {
+	client := &fakeHTTPClient{respBody: "<html></html>"}
+	params := Params{URL: "https://example.com/"}
+
+	_, err := Fetch(context.Background(), params, client)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	ua := client.lastHeaders.Get("User-Agent")
+	if ua == "" || !strings.Contains(ua, "Mozilla") {
+		t.Errorf("User-Agent = %q, want a realistic browser UA containing \"Mozilla\"", ua)
+	}
+	if accept := client.lastHeaders.Get("Accept"); accept == "" {
+		t.Errorf("Accept header missing; expected a non-empty browser-style Accept")
+	}
+	if acceptLang := client.lastHeaders.Get("Accept-Language"); acceptLang == "" {
+		t.Errorf("Accept-Language header missing; expected a non-empty value")
 	}
 }
