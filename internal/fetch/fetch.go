@@ -21,10 +21,13 @@ import (
 const DefaultTimeout = 30 * time.Second
 
 // Params holds the inputs to a single fetch. Timeout bounds the request (zero
-// means use DefaultTimeout). Later tickets add more fields.
+// means use DefaultTimeout). ReturnFormat selects "markdown" (default, when
+// empty) or "text". NoCache requests a fresh fetch that bypasses the cache.
 type Params struct {
-	URL     string
-	Timeout time.Duration
+	URL          string
+	Timeout      time.Duration
+	ReturnFormat string
+	NoCache      bool
 }
 
 // Result holds the output of a fetch. Title is the extracted article title
@@ -54,15 +57,22 @@ var browserHeaders = http.Header{
 	"Accept-Language": {"en-US,en;q=0.9"},
 }
 
+// defaultCache is the process-wide in-memory result cache. Entries expire after
+// DefaultCacheTTL; a process restart clears it. Honoured by Fetch unless
+// params.NoCache is set.
+var defaultCache = newCache(DefaultCacheTTL)
+
 // Fetch retrieves the content at params.URL. It validates the URL first: a
 // malformed, non-absolute, or non-http(s) URL returns an InvalidURLError
 // without issuing any request.
 //
-// The request is bounded by params.Timeout (default 30s). A non-2xx response
-// returns an HTTPError; a non-HTML content type returns an
-// UnsupportedContentError; a transport failure returns a FetchError. Any panic
-// during the fetch or extract path is recovered and returned as a PanicError,
-// so the process never crashes (ADR-0005).
+// Validated results are served from the in-memory cache keyed by
+// (url, return_format); params.NoCache forces a fresh fetch. The request is
+// bounded by params.Timeout (default 30s). A non-2xx response returns an
+// HTTPError; a non-HTML content type returns an UnsupportedContentError; a
+// transport failure returns a FetchError. Any panic during the fetch or
+// extract path is recovered and returned as a PanicError, so the process never
+// crashes (ADR-0005).
 func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Result, err error) {
 	// Recover any panic so the server process stays alive. A crash-restart is
 	// itself a connection-failure risk (ADR-0005).
@@ -77,6 +87,17 @@ func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Resul
 		return nil, &InvalidURLError{URL: params.URL}
 	}
 
+	// Serve from cache unless the caller forces a fresh fetch. The miss handler
+	// closes over ctx and client so the cache itself stays client-agnostic.
+	return defaultCache.get(params, params.NoCache, func(p Params) (*Result, error) {
+		return fetchUncached(ctx, p, client)
+	})
+}
+
+// fetchUncached performs a single live fetch + extract, with no cache. It is
+// the miss handler for Fetch's cache. All error types (HTTPError,
+// UnsupportedContentError, FetchError, TimeoutError) are produced here.
+func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Result, error) {
 	timeout := params.Timeout
 	if timeout <= 0 {
 		timeout = DefaultTimeout
