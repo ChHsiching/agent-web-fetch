@@ -1,0 +1,11 @@
+# Build output
+/bin/
+*.exe
+*.exe~
+
+# Go workspace scratch
+/.scratch/
+
+# OS noise
+.DS_Store
+Thumbs.db
