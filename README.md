@@ -55,8 +55,7 @@ empty output. Image URLs are preserved in the markdown.
 
 ### 1. Download the binary for your platform
 
-Grab the right file from the latest release and put it anywhere on your machine
-(for example `~/bin/` or `C:\Users\you\bin\`):
+Grab the right file from the latest release:
 
 | Platform          | File                                  |
 | ----------------- | ------------------------------------- |
@@ -66,6 +65,16 @@ Grab the right file from the latest release and put it anywhere on your machine
 | Linux             | `agent-web-fetch-linux-amd64`         |
 
 No installer, no runtime to install (no Node, Python, or Go required).
+
+**Where to put the file:** anywhere you like — there is no required location and
+no need to add it to your `PATH` (MCP launches it via the absolute path you put
+in the config). The only constraints are that it stays where you put it (the
+config references that path) and that your user has read/execute permission on
+it. So don't drop it in another user's directory or a system folder that needs
+admin rights. Any folder you own — a documents folder, a dedicated tools
+folder, your home directory — works fine.
+
+
 
 ### 2. Register it with your MCP client
 
