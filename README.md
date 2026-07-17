@@ -72,7 +72,7 @@ requirements. In every MCP client the config entry is the same idea — point
 `command` at the binary's absolute path, leave `args` empty:
 
 ```json
-"web-fetch": {
+"chhsich-web-fetch": {
   "type": "stdio",
   "command": "/absolute/path/to/agent-web-fetch",
   "args": []
@@ -82,11 +82,12 @@ requirements. In every MCP client the config entry is the same idea — point
 What differs between clients is only **where** this entry goes and the exact
 key names. Concrete examples for the common ones:
 
-**ZCode** — add the entry to its MCP servers config (the shape you gave us):
+**ZCode** — add the entry to its MCP servers config (a flat object keyed by
+server name, no outer wrapper):
 
 ```json
 {
-  "web-fetch": {
+  "chhsich-web-fetch": {
     "type": "stdio",
     "command": "C:/Users/you/bin/agent-web-fetch.exe",
     "args": []
@@ -95,12 +96,12 @@ key names. Concrete examples for the common ones:
 ```
 
 **Claude Code** — `~/.claude.json` (or `%USERPROFILE%\.claude.json` on Windows),
-wrapped under `mcpServers`:
+where servers live under a `mcpServers` key:
 
 ```json
 {
   "mcpServers": {
-    "web-fetch": {
+    "chhsich-web-fetch": {
       "type": "stdio",
       "command": "C:/Users/you/bin/agent-web-fetch.exe",
       "args": []
@@ -109,12 +110,18 @@ wrapped under `mcpServers`:
 }
 ```
 
-Or via the CLI (does the same thing): `claude mcp add web-fetch "C:/Users/you/bin/agent-web-fetch.exe"`
+Or via the CLI (does the same thing): `claude mcp add chhsich-web-fetch "C:/Users/you/bin/agent-web-fetch.exe"`
 
 **Any other stdio MCP client** — find where it keeps its MCP server list (a
 JSON/YAML config, a settings UI, etc.) and add one entry: type `stdio`,
 `command` = absolute path to the binary, `args` = `[]`. That's the whole
 contract — there are no other parameters to set.
+
+> **Naming:** the key (`chhsich-web-fetch` above) is your client-side label
+> for the server — call it whatever you want. The tool it exposes is named
+> `fetch`, so the model calls `fetch(...)`. Two servers exposing a tool both
+> named `fetch` don't conflict as long as the server keys differ (the server
+> name is the namespace).
 
 > **Path tip (Windows):** use the full absolute path including `.exe`.
 > Forward slashes work in JSON and avoid backslash escaping
