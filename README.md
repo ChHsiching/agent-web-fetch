@@ -1,5 +1,7 @@
 # agent-web-fetch
 
+**English** | [简体中文](./README.zh-CN.md)
+
 A **free, uncapped web reader** for MCP-capable agents (Claude Code, ZCode, and
 any client that speaks the Model Context Protocol). It takes a URL the agent
 already holds and returns the page's main content as clean, model-friendly
