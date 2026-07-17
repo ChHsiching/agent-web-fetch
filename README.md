@@ -72,7 +72,7 @@ user-installed programs:
 
 | Platform | Recommended location |
 | -------- | -------------------- |
-| Windows | `C:\Users\<you>\AppData\Local\Programs\agent-web-fetch\agent-web-fetch.exe` |
+| Windows | `%LOCALAPPDATA%\Programs\agent-web-fetch\agent-web-fetch.exe` |
 | macOS / Linux | `~/.local/bin/agent-web-fetch` |
 
 That said, MCP doesn't actually care where the file lives — it launches the
@@ -105,7 +105,7 @@ server name, no outer wrapper):
 {
   "chhsich-web-fetch": {
     "type": "stdio",
-    "command": "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe",
+    "command": "C:/Users/<username>/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe",
     "args": []
   }
 }
@@ -119,14 +119,14 @@ where servers live under a `mcpServers` key:
   "mcpServers": {
     "chhsich-web-fetch": {
       "type": "stdio",
-      "command": "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe",
+      "command": "C:/Users/<username>/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe",
       "args": []
     }
   }
 }
 ```
 
-Or via the CLI (does the same thing): `claude mcp add chhsich-web-fetch "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe"`
+Or via the CLI (does the same thing): `claude mcp add chhsich-web-fetch "C:/Users/<username>/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe"`
 
 **Any other stdio MCP client** — find where it keeps its MCP server list (a
 JSON/YAML config, a settings UI, etc.) and add one entry: type `stdio`,
@@ -134,8 +134,9 @@ JSON/YAML config, a settings UI, etc.) and add one entry: type `stdio`,
 contract — there are no other parameters to set.
 
 > **Replace the path:** the examples above use the recommended install location
-> with `you` as a placeholder username — swap in your actual username and adjust
-> the path if you put the binary somewhere else.
+> with `<username>` as a placeholder — swap in your actual username (or use
+> `%LOCALAPPDATA%` if your client expands env vars). Adjust the path if you put
+> the binary somewhere else.
 
 > **Naming:** the key (`chhsich-web-fetch` above) is your client-side label
 > for the server — call it whatever you want. The tool it exposes is named
