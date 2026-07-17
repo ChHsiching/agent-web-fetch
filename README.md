@@ -85,23 +85,46 @@ path**.
 **ZCode** and other MCP clients use the same shape — set `command` to the
 absolute path of the binary.
 
-On Windows, use the full path including the `.exe` extension and escaped
-backslashes (or forward slashes, which also work):
+On Windows, put the `.exe` somewhere stable (e.g. `C:\Users\you\bin\`) and use
+its full path in the config. Forward slashes work fine in JSON and avoid
+backslash escaping:
 
 ```json
 {
   "mcpServers": {
     "web-fetch": {
-      "command": "C:\\Users\\you\\bin\\agent-web-fetch.exe"
+      "command": "C:/Users/you/bin/agent-web-fetch.exe"
     }
   }
 }
 ```
 
-Restart your client. The `fetch` tool now appears alongside the built-in tools
-and the model can call it like any other.
+> **Windows SmartScreen note:** the release binary is unsigned, so Windows may
+> show a "Windows protected your PC" prompt the first time it runs. Click
+> **More info → Run anyway**. This is expected for unsigned binaries and only
+> happens once.
 
-### 3. (Optional) Enable file logging
+**Where is the MCP config file?**
+
+- **Claude Code** — run `claude mcp list` to see configured servers, or add
+  via CLI: `claude mcp add web-fetch "C:/Users/you/bin/agent-web-fetch.exe"`.
+  The config file itself is typically at `~/.claude.json` (or
+  `%USERPROFILE%\.claude.json` on Windows).
+- **ZCode** — its MCP config; the entry shape is identical to the JSON above.
+
+Restart your client after editing the config. The `fetch` tool now appears
+alongside the built-in tools and the model can call it like any other.
+
+### 3. Verify it works
+
+After restarting your client, ask the model to fetch any public page, e.g.:
+
+> Use the fetch tool to read https://example.com
+
+You should get back the page's content as markdown. If nothing comes back or
+the tool is missing, set `WEB_FETCH_LOG` (below) and check the log file.
+
+### 4. (Optional) Enable file logging
 
 By default the server is silent (stdout is the MCP transport and must stay
 clean). To write diagnostics to a file for troubleshooting:
