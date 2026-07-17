@@ -72,15 +72,33 @@ jobs:
           # legs append their asset to the same release.
           files: dist/${{ matrix.asset }}
 
-  # Generate provenance: a short build-attestation note attached as a release
-  # artifact so users can see exactly which commit/runner produced the binaries.
+  # Generate provenance: a short build-attestation note plus a SHA256SUMS.txt
+  # covering every binary, both attached as release artifacts. The checksums let
+  # users verify a downloaded binary matches the release byte-for-byte (the
+  # minimum integrity check, given the binaries are unsigned).
   attest:
-    name: attach build info
+    name: attach build info + checksums
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Download all release assets and compute checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p assets
+          # Download every binary attached by the build matrix legs.
+          gh release download "$GITHUB_REF_NAME" -D assets --repo "$GITHUB_REPOSITORY" \
+            --pattern 'agent-web-fetch-*'
+          # Produce a SHA256SUMS.txt in the "<sha256>  <filename>" format that
+          # `sha256sum -c` consumes, so users can verify with one command.
+          cd assets
+          sha256sum agent-web-fetch-* | sort -k2 > ../SHA256SUMS.txt
+          cd ..
+          echo "Checksums:" && cat SHA256SUMS.txt
+
       - name: Write build info
         env:
           TAG: ${{ github.ref_name }}
@@ -93,7 +111,23 @@ jobs:
             echo "The binaries attached to this release were built by GitHub Actions"
             echo "from source commit \`$SHA\` (tag \`$TAG\`)."
             echo
-            echo "Reproduce locally:"
+            echo "## Verify a downloaded binary"
+            echo
+            echo "Each binary's SHA-256 is listed in \`SHA256SUMS.txt\`. After downloading,"
+            echo "check the file you got matches the published checksum:"
+            echo
+            echo '```bash'
+            echo "# On macOS / Linux:"
+            echo "shasum -a 256 agent-web-fetch-darwin-arm64   # compare to SHA256SUMS.txt"
+            echo "# or, verify against the sums file directly:"
+            echo "sha256sum -c SHA256SUMS.txt --ignore-missing"
+            echo ""
+            echo "# On Windows (PowerShell):"
+            echo "Get-FileHash .\agent-web-fetch-windows-amd64.exe -Algorithm SHA256"
+            echo '```'
+            echo
+            echo "## Reproduce the build"
+            echo
             echo '```bash'
             echo "git clone https://github.com/${{ github.repository }}"
             echo "cd ${{ github.event.repository.name }}"
@@ -103,7 +137,10 @@ jobs:
             echo
             echo "Build run: https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
           } > BUILD_INFO.md
-      - name: Attach BUILD_INFO to release
+
+      - name: Attach BUILD_INFO and SHA256SUMS to release
         uses: softprops/action-gh-release@v2
         with:
-          files: BUILD_INFO.md
+          files: |
+            BUILD_INFO.md
+            SHA256SUMS.txt
