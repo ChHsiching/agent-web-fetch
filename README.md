@@ -67,50 +67,63 @@ No installer, no runtime to install (no Node, Python, or Go required).
 
 ### 2. Register it with your MCP client
 
-Add an entry to your client's MCP config pointing at the binary's **absolute
-path**.
+This is a standard **stdio MCP server**: it has no arguments and no environment
+requirements. In every MCP client the config entry is the same idea — point
+`command` at the binary's absolute path, leave `args` empty:
 
-**Claude Code** (`mcp.json`):
+```json
+"web-fetch": {
+  "type": "stdio",
+  "command": "/absolute/path/to/agent-web-fetch",
+  "args": []
+}
+```
+
+What differs between clients is only **where** this entry goes and the exact
+key names. Concrete examples for the common ones:
+
+**ZCode** — add the entry to its MCP servers config (the shape you gave us):
+
+```json
+{
+  "web-fetch": {
+    "type": "stdio",
+    "command": "C:/Users/you/bin/agent-web-fetch.exe",
+    "args": []
+  }
+}
+```
+
+**Claude Code** — `~/.claude.json` (or `%USERPROFILE%\.claude.json` on Windows),
+wrapped under `mcpServers`:
 
 ```json
 {
   "mcpServers": {
     "web-fetch": {
-      "command": "/absolute/path/to/agent-web-fetch"
+      "type": "stdio",
+      "command": "C:/Users/you/bin/agent-web-fetch.exe",
+      "args": []
     }
   }
 }
 ```
 
-**ZCode** and other MCP clients use the same shape — set `command` to the
-absolute path of the binary.
+Or via the CLI (does the same thing): `claude mcp add web-fetch "C:/Users/you/bin/agent-web-fetch.exe"`
 
-On Windows, put the `.exe` somewhere stable (e.g. `C:\Users\you\bin\`) and use
-its full path in the config. Forward slashes work fine in JSON and avoid
-backslash escaping:
+**Any other stdio MCP client** — find where it keeps its MCP server list (a
+JSON/YAML config, a settings UI, etc.) and add one entry: type `stdio`,
+`command` = absolute path to the binary, `args` = `[]`. That's the whole
+contract — there are no other parameters to set.
 
-```json
-{
-  "mcpServers": {
-    "web-fetch": {
-      "command": "C:/Users/you/bin/agent-web-fetch.exe"
-    }
-  }
-}
-```
+> **Path tip (Windows):** use the full absolute path including `.exe`.
+> Forward slashes work in JSON and avoid backslash escaping
+> (`"C:/Users/you/bin/agent-web-fetch.exe"`).
 
 > **Windows SmartScreen note:** the release binary is unsigned, so Windows may
 > show a "Windows protected your PC" prompt the first time it runs. Click
 > **More info → Run anyway**. This is expected for unsigned binaries and only
 > happens once.
-
-**Where is the MCP config file?**
-
-- **Claude Code** — run `claude mcp list` to see configured servers, or add
-  via CLI: `claude mcp add web-fetch "C:/Users/you/bin/agent-web-fetch.exe"`.
-  The config file itself is typically at `~/.claude.json` (or
-  `%USERPROFILE%\.claude.json` on Windows).
-- **ZCode** — its MCP config; the entry shape is identical to the JSON above.
 
 Restart your client after editing the config. The `fetch` tool now appears
 alongside the built-in tools and the model can call it like any other.
