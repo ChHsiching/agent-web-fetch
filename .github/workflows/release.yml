@@ -1,0 +1,109 @@
+# Build and publish cross-platform release binaries from source.
+#
+# Triggered by pushing a tag matching v* (e.g. v0.1.0). Produces the four
+# platform binaries on GitHub-hosted runners and attaches them to the
+# corresponding GitHub Release — so users can verify the binaries were built
+# from the tagged source in an isolated CI environment, not uploaded from a
+# developer's machine.
+#
+# Storage hygiene: binaries are uploaded directly to the Release (stored under
+# Releases, not Actions artifacts). We deliberately do NOT use
+# actions/upload-artifact, which is what would consume Actions storage quota.
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # required to create the release and upload assets
+
+jobs:
+  build:
+    name: build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            asset: agent-web-fetch-windows-amd64.exe
+          - goos: darwin
+            goarch: arm64
+            asset: agent-web-fetch-darwin-arm64
+          - goos: darwin
+            goarch: amd64
+            asset: agent-web-fetch-darwin-amd64
+          - goos: linux
+            goarch: amd64
+            asset: agent-web-fetch-linux-amd64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Run tests (only on the linux/amd64 variant to avoid 4x duplication)
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        run: go test ./...
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w" -o "dist/${{ matrix.asset }}" ./cmd/agent-web-fetch
+
+      - name: Upload asset to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Attach just this platform's binary. The release itself (title,
+          # notes) is created by the first matrix leg that runs; subsequent
+          # legs append their asset to the same release.
+          files: dist/${{ matrix.asset }}
+
+  # Generate provenance: a short build-attestation note attached as a release
+  # artifact so users can see exactly which commit/runner produced the binaries.
+  attest:
+    name: attach build info
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Write build info
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          {
+            echo "# Build provenance for $TAG"
+            echo
+            echo "The binaries attached to this release were built by GitHub Actions"
+            echo "from source commit \`$SHA\` (tag \`$TAG\`)."
+            echo
+            echo "Reproduce locally:"
+            echo '```bash'
+            echo "git clone https://github.com/${{ github.repository }}"
+            echo "cd ${{ github.event.repository.name }}"
+            echo "git checkout $TAG"
+            echo "./build.sh   # produces the same four binaries in dist/"
+            echo '```'
+            echo
+            echo "Build run: https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
+          } > BUILD_INFO.md
+      - name: Attach BUILD_INFO to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: BUILD_INFO.md
