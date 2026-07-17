@@ -66,15 +66,20 @@ Grab the right file from the latest release:
 
 No installer, no runtime to install (no Node, Python, or Go required).
 
-**Where to put the file:** anywhere you like — there is no required location and
-no need to add it to your `PATH` (MCP launches it via the absolute path you put
-in the config). The only constraints are that it stays where you put it (the
-config references that path) and that your user has read/execute permission on
-it. So don't drop it in another user's directory or a system folder that needs
-admin rights. Any folder you own — a documents folder, a dedicated tools
-folder, your home directory — works fine.
+**Where to put the file:** a recommended per-user location exists on each
+platform — it needs no admin rights and is the conventional spot for
+user-installed programs:
 
+| Platform | Recommended location |
+| -------- | -------------------- |
+| Windows | `C:\Users\<you>\AppData\Local\Programs\agent-web-fetch\agent-web-fetch.exe` |
+| macOS / Linux | `~/.local/bin/agent-web-fetch` |
 
+That said, MCP doesn't actually care where the file lives — it launches the
+binary via the absolute path in your config, so you can put it anywhere you have
+read/execute permission (no need to add it to `PATH`). Just don't drop it into
+other users' directories or system folders that need admin rights. The examples
+below use the recommended locations; replace the path if you put it elsewhere.
 
 ### 2. Register it with your MCP client
 
@@ -100,7 +105,7 @@ server name, no outer wrapper):
 {
   "chhsich-web-fetch": {
     "type": "stdio",
-    "command": "C:/Users/you/bin/agent-web-fetch.exe",
+    "command": "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe",
     "args": []
   }
 }
@@ -114,19 +119,23 @@ where servers live under a `mcpServers` key:
   "mcpServers": {
     "chhsich-web-fetch": {
       "type": "stdio",
-      "command": "C:/Users/you/bin/agent-web-fetch.exe",
+      "command": "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe",
       "args": []
     }
   }
 }
 ```
 
-Or via the CLI (does the same thing): `claude mcp add chhsich-web-fetch "C:/Users/you/bin/agent-web-fetch.exe"`
+Or via the CLI (does the same thing): `claude mcp add chhsich-web-fetch "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe"`
 
 **Any other stdio MCP client** — find where it keeps its MCP server list (a
 JSON/YAML config, a settings UI, etc.) and add one entry: type `stdio`,
 `command` = absolute path to the binary, `args` = `[]`. That's the whole
 contract — there are no other parameters to set.
+
+> **Replace the path:** the examples above use the recommended install location
+> with `you` as a placeholder username — swap in your actual username and adjust
+> the path if you put the binary somewhere else.
 
 > **Naming:** the key (`chhsich-web-fetch` above) is your client-side label
 > for the server — call it whatever you want. The tool it exposes is named
@@ -135,8 +144,7 @@ contract — there are no other parameters to set.
 > name is the namespace).
 
 > **Path tip (Windows):** use the full absolute path including `.exe`.
-> Forward slashes work in JSON and avoid backslash escaping
-> (`"C:/Users/you/bin/agent-web-fetch.exe"`).
+> Forward slashes work in JSON and avoid backslash escaping.
 
 > **Windows SmartScreen note:** the release binary is unsigned, so Windows may
 > show a "Windows protected your PC" prompt the first time it runs. Click

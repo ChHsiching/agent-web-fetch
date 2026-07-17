@@ -50,9 +50,14 @@ fetch({ "url": "https://example.com" })
 
 无需安装器，无需安装运行时（不需要 Node、Python 或 Go）。
 
-**文件放哪里：** 随便放，没有规定位置，也**不需要**加到 `PATH`（MCP 是通过你在配置里填的绝对路径来启动它的）。唯一的要求是：文件要放在一个稳定的地方（配置会引用这个路径），且你的用户对它有读和执行权限。所以别放在别的用户目录里，也别放进需要管理员权限的系统文件夹。你自己拥有的任何文件夹都行 —— 文档文件夹、专门的工具文件夹、家目录，都没问题。
+**文件放哪里：** 每个平台都有一个**推荐的用户级位置** —— 不需要管理员权限，是用户自己安装的程序约定俗成的存放点：
 
+| 平台 | 推荐位置 |
+| ---- | -------- |
+| Windows | `C:\Users\<你>\AppData\Local\Programs\agent-web-fetch\agent-web-fetch.exe` |
+| macOS / Linux | `~/.local/bin/agent-web-fetch` |
 
+不过 MCP 其实不在乎文件放在哪 —— 它是通过你配置里的绝对路径来启动二进制的，所以放在任何你有读/执行权限的地方都行（也**不需要**加到 `PATH`）。只要别放进其他用户的目录，或需要管理员权限的系统文件夹。下面的示例用的是推荐位置；如果你放在别处，把路径替换掉即可。
 
 ### 2. 在你的 MCP 客户端里注册它
 
@@ -74,7 +79,7 @@ fetch({ "url": "https://example.com" })
 {
   "chhsich-web-fetch": {
     "type": "stdio",
-    "command": "C:/Users/you/bin/agent-web-fetch.exe",
+    "command": "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe",
     "args": []
   }
 }
@@ -87,20 +92,22 @@ fetch({ "url": "https://example.com" })
   "mcpServers": {
     "chhsich-web-fetch": {
       "type": "stdio",
-      "command": "C:/Users/you/bin/agent-web-fetch.exe",
+      "command": "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe",
       "args": []
     }
   }
 }
 ```
 
-或者用 CLI（效果一样）：`claude mcp add chhsich-web-fetch "C:/Users/you/bin/agent-web-fetch.exe"`
+或者用 CLI（效果一样）：`claude mcp add chhsich-web-fetch "C:/Users/you/AppData/Local/Programs/agent-web-fetch/agent-web-fetch.exe"`
 
 **其他任何 stdio MCP 客户端** —— 找到它存放 MCP server 列表的地方（JSON/YAML 配置、设置界面等），添加一条：type 为 `stdio`，`command` 为二进制的绝对路径，`args` 为 `[]`。这就是全部契约 —— 没有其他参数要设。
 
+> **替换路径：** 上面的示例用的是推荐安装位置，`you` 是用户名占位符 —— 把它换成你的实际用户名；如果你把二进制放在了别处，相应调整路径。
+
 > **命名说明：** 上面的键名（`chhsich-web-fetch`）是你在客户端侧给 server 起的标签 —— 想叫什么都行。它暴露的工具名为 `fetch`，所以模型调用的是 `fetch(...)`。两个 server 都提供名为 `fetch` 的工具不会冲突，只要 server 的键名不同（server 名就是命名空间）。
 
-> **路径提示（Windows）：** 用包含 `.exe` 的完整绝对路径。在 JSON 里正斜杠也能用，还能避免反斜杠转义（`"C:/Users/you/bin/agent-web-fetch.exe"`）。
+> **路径提示（Windows）：** 用包含 `.exe` 的完整绝对路径。JSON 里正斜杠也能用，还能避免反斜杠转义。
 
 > **Windows SmartScreen 提示：** release 的二进制未签名，所以 Windows 可能在首次运行时弹出"Windows 已保护你的电脑"提示。点 **更多信息 → 仍要运行**。这对未签名二进制是正常的，且只会出现一次。
 
