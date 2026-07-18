@@ -25,16 +25,24 @@ func TestSmoke_RealNetworkFetch(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	sess, err := cli.Connect(ctx, cliT, nil)
-	if err != nil { t.Fatalf("connect: %v", err) }
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
 	defer sess.Close()
 
 	res, err := sess.CallTool(ctx, &mcp.CallToolParams{
-		Name: "fetch",
+		Name:      "fetch",
 		Arguments: map[string]any{"url": "https://example.com"},
 	})
-	if err != nil { t.Fatalf("call: %v", err) }
-	if res.IsError { t.Fatalf("tool error: %v", res.Content) }
-	if len(res.Content) == 0 { t.Fatal("no content") }
+	if err != nil {
+		t.Fatalf("call: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %v", res.Content)
+	}
+	if len(res.Content) == 0 {
+		t.Fatal("no content")
+	}
 	tc, _ := res.Content[0].(*mcp.TextContent)
 	if tc == nil || !strings.Contains(strings.ToLower(tc.Text), "documentation examples") {
 		t.Fatalf("expected example.com content, got: %v", tc)

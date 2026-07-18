@@ -1,4 +1,4 @@
-# Lightweight CI on push/PR to main: just test + vet. Produces no artifacts,
+# CI on push/PR to main: format check, vet, build, test. Produces no artifacts,
 # so it consumes no Actions storage — only run minutes (free tier for public repos).
 
 name: ci
@@ -18,7 +18,21 @@ jobs:
         with:
           go-version: '1.22'
           cache: true
+      - name: Check gofmt
+        run: |
+          # Fail if any file is not gofmt-formatted. Prevents whitespace noise
+          # in diffs and catches unformatted code before review.
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "::error::These files need 'gofmt -w':"
+            echo "$out"
+            exit 1
+          fi
       - name: Vet
         run: go vet ./...
+      - name: Build
+        # Build all packages (including cmd/ main, which has no tests) so a
+        # compile error there fails CI here, not at release time.
+        run: go build ./...
       - name: Test
         run: go test ./...

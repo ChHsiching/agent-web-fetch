@@ -1,14 +1,14 @@
 package fetch
 
 import (
-	"strings"
 	"net/url"
+	"strings"
 
+	readability "codeberg.org/readeck/go-readability"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
-	readability "codeberg.org/readeck/go-readability"
 )
 
 // minReadableLen is the floor below which a Readability extraction is treated

@@ -217,7 +217,7 @@ func TestFetch_NoCacheBypassesCache(t *testing.T) {
 	client := &fakeHTTPClient{respBody: "<html><body><article><h1>C</h1><p>Body text that is long enough to be readable by the extractor.</p></article></body></html>"}
 	url := "https://example.com/nocache"
 
-	_, _ = Fetch(context.Background(), Params{URL: url}, client)              // populate
+	_, _ = Fetch(context.Background(), Params{URL: url}, client)                // populate
 	_, _ = Fetch(context.Background(), Params{URL: url, NoCache: true}, client) // bypass
 
 	if client.calls != 2 {
