@@ -151,3 +151,14 @@ URL → 校验（http/https、绝对地址）→ HTTP GET（真实浏览器 head
 抓取管线是一个单一的深度模块（`internal/fetch`），通过 stdio 暴露为一个 MCP 工具（`internal/mcpserver`）。每一种失败（超时、非 2xx、错误的内容类型，甚至被 recover 的 panic）都会作为模型可读的结构化错误返回 —— server 进程永远不会崩溃。
 
 项目术语表见 `CONTEXT.md`，架构决策（MCP + 二进制分发、匿名抓取、静态提取、Go、启动可靠性）见 `docs/adr/`。
+
+## 许可证
+
+AGPL-3.0-only · Copyright (c) 2026 ChHsiching —— 见 [LICENSE](LICENSE)。
+
+- 使用（含公司内部使用）、修改、分发均免费；但分发或以本代码提供网络服务时，衍生作品须以 AGPL-3.0 开源。
+- 闭源商用须另行获取商业授权：hsichingchang@gmail.com
+
+### 贡献条款
+
+提交 PR 即表示你同意以 AGPL-3.0 授权你的贡献，并授予维护者在 AGPL 之外另行提供商业授权的权利（你的贡献始终以 AGPL 对所有人开放）。
