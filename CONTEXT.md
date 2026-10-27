@@ -23,6 +23,13 @@ by stripping boilerplate and isolating the main article — e.g. via a
 Readability-style algorithm. Part of the reader's job.
 _Avoid_: Parsing (too low-level), scraping
 
+**Passthrough**:
+Returning a fetched raw-text document (markdown, JSON, XML, YAML, CSV, ...)
+verbatim after decoding it to UTF-8 — no extraction, no wrapping, no
+reformatting. A path parallel to Extraction, taken when the body is already
+model-friendly as-is.
+_Avoid_: Extraction (the HTML-only path), Processing (any transformation)
+
 **Processing**:
 Any transformation *beyond* fetch + extract — summaries, translations, image
 descriptions, link digests, reformatting. Explicitly **out of scope**: the
