@@ -60,9 +60,11 @@ func (e *TimeoutError) Error() string {
 	return "fetch timed out: " + e.URL
 }
 
-// UnsupportedContentError is returned when the response is not an HTML
-// document (e.g. a PDF, image, or binary). The reader only extracts HTML;
-// other types are reported clearly rather than producing garbage.
+// UnsupportedContentError is returned when the response is a binary or other
+// non-text type (e.g. a PDF, image, audio/video, or generic binary) or has no
+// Content-Type at all. HTML goes through Extraction and raw text documents go
+// through Passthrough (ADR-0006); the remaining types are reported clearly
+// rather than producing garbage.
 type UnsupportedContentError struct {
 	ContentType string
 }
