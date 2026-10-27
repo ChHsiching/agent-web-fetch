@@ -31,6 +31,14 @@ boilerplate (nav, footer, scripts). When a page has no clear main article
 (list pages, dashboards), it falls back to the full document so you never get
 empty output. Image URLs are preserved in the markdown.
 
+URLs that serve raw text documents — all `text/*` types (markdown, plain
+text, CSV, ...), JSON (including `+json` vendor types), XML, YAML, and
+JavaScript — skip extraction entirely: the body is decoded to UTF-8 and
+returned verbatim, with no wrapping or reformatting. For these raw files both
+`return_format` values return identical content — the document already is its
+own model-friendly form. Binary and other non-text types (PDF, images,
+audio/video) are still rejected with a clear error.
+
 ### Tool parameters
 
 | Parameter       | Required | Default   | Description                                                      |
@@ -192,6 +200,7 @@ dependency. Run the test suite with `go test ./...`.
 URL → validate (http/https, absolute) → HTTP GET (realistic browser headers)
    → Readability extraction → markdown → in-memory cache (1h TTL)
                                      ↘ full-document fallback (never empty)
+   ↘ raw text (text/*, JSON, XML, YAML, JS) → verbatim passthrough (UTF-8)
 ```
 
 The fetch pipeline is a single deep module (`internal/fetch`), exposed over

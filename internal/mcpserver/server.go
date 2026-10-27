@@ -42,7 +42,7 @@ func newServer(deps Deps) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "agent-web-fetch", Version: "v0.1.0"}, nil)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "fetch",
-		Description: "Fetch a URL and return its main content as model-friendly markdown. A free, uncapped replacement for paid web-reader tools.",
+		Description: "Fetch a URL and return its main content as model-friendly markdown. A free, uncapped replacement for paid web-reader tools. Raw text documents (markdown, JSON, XML, YAML, CSV and other text) are returned verbatim; both return_format values return identical content for raw files.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in toolInput) (res *mcp.CallToolResult, _ any, _ error) {
 		// Defense-in-depth: fetch.Fetch already recovers panics in the
 		// fetch/extract path, but recover here too so the MCP server process

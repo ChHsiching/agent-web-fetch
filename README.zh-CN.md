@@ -19,6 +19,8 @@ fetch({ "url": "https://example.com" })
 
 它运行 Readability 风格的提取，剥离样板内容（导航、页脚、脚本），只保留主文章。当页面没有明确的主文章时（列表页、仪表盘），它会回退到整个文档，所以永远不会返回空内容。图片 URL 会保留在输出的 markdown 里。
 
+本身就是纯文本的 URL —— 所有 `text/*` 类型（markdown、纯文本、CSV 等）、JSON（含 `+json` 厂商类型）、XML、YAML、JavaScript —— 完全跳过提取：正文解码为 UTF-8 后**原样返回**，不做任何包装或重排版。对这类纯文本文件，`return_format` 的两个取值（`markdown` 和 `text`）返回的内容完全相同 —— 文档本身就是对模型友好的形式。二进制及其他非文本类型（PDF、图片、音视频）仍会被明确报错拒绝。
+
 ### 工具参数
 
 | 参数            | 必填 | 默认值    | 说明                                                  |
@@ -146,6 +148,7 @@ make release
 URL → 校验（http/https、绝对地址）→ HTTP GET（真实浏览器 headers）
    → Readability 提取 → markdown → 内存缓存（1 小时 TTL）
                                   ↘ 整篇文档回退（永不返回空）
+   ↘ 纯文本（text/*、JSON、XML、YAML、JS）→ 原样透传（解码为 UTF-8）
 ```
 
 抓取管线是一个单一的深度模块（`internal/fetch`），通过 stdio 暴露为一个 MCP 工具（`internal/mcpserver`）。每一种失败（超时、非 2xx、错误的内容类型，甚至被 recover 的 panic）都会作为模型可读的结构化错误返回 —— server 进程永远不会崩溃。
