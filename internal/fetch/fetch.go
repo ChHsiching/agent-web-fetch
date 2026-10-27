@@ -129,9 +129,9 @@ func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Resu
 	ct := resp.Header.Get("Content-Type")
 	switch {
 	case contentTypeIsHTML(ct):
-		body, err := io.ReadAll(resp.Body)
+		body, err := readBody(resp.Body, params.URL)
 		if err != nil {
-			return nil, classifyTransportErr(err, params.URL)
+			return nil, err
 		}
 		title, markdown, err := extract(string(body), params.URL)
 		if err != nil {
@@ -139,14 +139,27 @@ func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Resu
 		}
 		return &Result{Title: title, Content: markdown}, nil
 	case isRawTextContentType(ct):
-		body, err := io.ReadAll(resp.Body)
+		body, err := readBody(resp.Body, params.URL)
 		if err != nil {
-			return nil, classifyTransportErr(err, params.URL)
+			return nil, err
 		}
 		return passthroughResult(body, ct, params.URL)
 	default:
 		return nil, &UnsupportedContentError{ContentType: ct}
 	}
+}
+
+// readBody reads the whole response body, translating a read failure into the
+// structured transport error for url (timeout vs fetch failure). It is the
+// shared read step of both accepted arms in fetchUncached — Extraction and
+// Passthrough — while rejected content types return above before any body is
+// read (ADR-0006).
+func readBody(body io.Reader, url string) ([]byte, error) {
+	b, err := io.ReadAll(body)
+	if err != nil {
+		return nil, classifyTransportErr(err, url)
+	}
+	return b, nil
 }
 
 // isFetchableScheme reports whether a scheme is one the Web Reader will fetch.
