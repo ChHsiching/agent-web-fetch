@@ -31,9 +31,11 @@ type Params struct {
 }
 
 // Result holds the output of a fetch. Title is the extracted article title
-// (possibly empty for non-article pages). Content is the model-friendly
-// markdown body — extracted by Readability, falling back to full-document
-// markdown so the reader never returns empty.
+// (possibly empty for non-article pages; for raw-text documents it is the URL
+// path basename). Content is the model-friendly markdown body — extracted by
+// Readability, falling back to full-document markdown so the reader never
+// returns empty. For raw-text documents Content is the decoded body verbatim
+// (Passthrough, ADR-0006).
 type Result struct {
 	Title   string
 	Content string
@@ -69,10 +71,11 @@ var defaultCache = newCache(DefaultCacheTTL)
 // Validated results are served from the in-memory cache keyed by
 // (url, return_format); params.NoCache forces a fresh fetch. The request is
 // bounded by params.Timeout (default 30s). A non-2xx response returns an
-// HTTPError; a non-HTML content type returns an UnsupportedContentError; a
-// transport failure returns a FetchError. Any panic during the fetch or
-// extract path is recovered and returned as a PanicError, so the process never
-// crashes (ADR-0005).
+// HTTPError. An HTML response is extracted as today; a raw-text response
+// (ADR-0006) is returned verbatim; any other content type returns an
+// UnsupportedContentError. A transport failure returns a FetchError. Any panic
+// during the fetch or extract path is recovered and returned as a PanicError,
+// so the process never crashes (ADR-0005).
 func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Result, err error) {
 	// Recover any panic so the server process stays alive. A crash-restart is
 	// itself a connection-failure risk (ADR-0005).
@@ -121,21 +124,29 @@ func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Resu
 		return nil, &HTTPError{StatusCode: resp.StatusCode, Reason: http.StatusText(resp.StatusCode)}
 	}
 
+	// Classify the response three ways (ADR-0006): HTML → extraction as
+	// today; raw text → passthrough verbatim; anything else → rejected.
 	ct := resp.Header.Get("Content-Type")
-	if !contentTypeIsHTML(ct) {
+	switch {
+	case contentTypeIsHTML(ct):
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, classifyTransportErr(err, params.URL)
+		}
+		title, markdown, err := extract(string(body), params.URL)
+		if err != nil {
+			return nil, &FetchError{Err: err}
+		}
+		return &Result{Title: title, Content: markdown}, nil
+	case isRawTextContentType(ct):
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, classifyTransportErr(err, params.URL)
+		}
+		return passthroughResult(body, ct, params.URL)
+	default:
 		return nil, &UnsupportedContentError{ContentType: ct}
 	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, classifyTransportErr(err, params.URL)
-	}
-
-	title, markdown, err := extract(string(body), params.URL)
-	if err != nil {
-		return nil, &FetchError{Err: err}
-	}
-	return &Result{Title: title, Content: markdown}, nil
 }
 
 // isFetchableScheme reports whether a scheme is one the Web Reader will fetch.
