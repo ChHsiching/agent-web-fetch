@@ -110,9 +110,14 @@ func classifyTransportErr(err error, url string) error {
 }
 
 // contentTypeIsHTML reports whether a Content-Type header value denotes HTML
-// (or XHTML, which the extractor also handles). Header values are matched
-// case-insensitively; a charset suffix is tolerated.
+// (or XHTML, which the extractor also handles). The value is parsed with
+// mediaType — the single content-type parser, shared with the raw-text
+// classification — so every arm of the fetch switch dispatches on the same
+// normalized media type. Matching stays substring-based on the parsed media
+// type rather than exact equality so no historically accepted type is
+// dropped: bare "application/xhtml" and "application/xhtml+xml" both match,
+// exactly as under the pre-passthrough raw-header check.
 func contentTypeIsHTML(ct string) bool {
-	lower := strings.ToLower(ct)
-	return strings.Contains(lower, "text/html") || strings.Contains(lower, "application/xhtml")
+	media := mediaType(ct)
+	return strings.Contains(media, "text/html") || strings.Contains(media, "application/xhtml")
 }

@@ -42,6 +42,9 @@ func isRawTextContentType(ct string) bool {
 
 // mediaType extracts the lowercase media type from a Content-Type header
 // value, dropping any parameters ("Text/Plain; charset=utf-8" → "text/plain").
+// It is the single content-type parser: both classification checks
+// (contentTypeIsHTML and isRawTextContentType) run on its output, so the
+// fetch switch dispatches on consistent input.
 func mediaType(ct string) string {
 	if i := strings.IndexByte(ct, ';'); i >= 0 {
 		ct = ct[:i]
