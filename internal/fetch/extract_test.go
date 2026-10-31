@@ -76,7 +76,7 @@ const sampleEmptyBodyHTML = `<!DOCTYPE html>
 // an article-type HTML page, extract returns the article title and a markdown
 // body that contains the article's substance and preserves image URLs.
 func TestExtract_ArticleReturnsTitleAndBody(t *testing.T) {
-	title, body, err := extract(sampleArticleHTML, "https://example.com/article")
+	title, body, err := extract(sampleArticleHTML, "https://example.com/article", formatMarkdown)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -102,7 +102,7 @@ func TestExtract_ArticleReturnsTitleAndBody(t *testing.T) {
 // little/no content (a list page with no main article), the full-document
 // fallback kicks in and the reader still returns non-empty useful content.
 func TestExtract_FallsBackToFullDocument(t *testing.T) {
-	_, body, err := extract(sampleListPageHTML, "https://example.com/items")
+	_, body, err := extract(sampleListPageHTML, "https://example.com/items", formatMarkdown)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -118,7 +118,7 @@ func TestExtract_FallsBackToFullDocument(t *testing.T) {
 // TestExtract_BlogPost keeps the post body and drops the sidebar, covering the
 // "blog" representative page type.
 func TestExtract_BlogPost(t *testing.T) {
-	title, body, err := extract(sampleBlogHTML, "https://dev.example.com/caching")
+	title, body, err := extract(sampleBlogHTML, "https://dev.example.com/caching", formatMarkdown)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -137,7 +137,7 @@ func TestExtract_BlogPost(t *testing.T) {
 // TestExtract_DocPage keeps the install steps and code block, covering the
 // "doc" representative page type.
 func TestExtract_DocPage(t *testing.T) {
-	title, body, err := extract(sampleDocHTML, "https://docs.example.com/install")
+	title, body, err := extract(sampleDocHTML, "https://docs.example.com/install", formatMarkdown)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -156,7 +156,7 @@ func TestExtract_DocPage(t *testing.T) {
 // TestExtract_EmptyBodyReturnsPlaceholder asserts the never-empty contract: a
 // document with no markdownable text still returns non-empty output.
 func TestExtract_EmptyBodyReturnsPlaceholder(t *testing.T) {
-	_, body, err := extract(sampleEmptyBodyHTML, "https://example.com/blank")
+	_, body, err := extract(sampleEmptyBodyHTML, "https://example.com/blank", formatMarkdown)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
