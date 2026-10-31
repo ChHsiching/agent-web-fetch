@@ -275,8 +275,8 @@ func TestE2E_OversizedBodyRejectedThenAdmittedWithMaxMB(t *testing.T) {
 	if !isError {
 		t.Fatalf("expected IsError for max_mb above the ceiling, got content of %d bytes", len(gotCeiling))
 	}
-	if !strings.Contains(gotCeiling, "8") {
-		t.Errorf("ceiling error should name 8; got: %q", gotCeiling)
+	if !strings.Contains(gotCeiling, "between 1 and 8") {
+		t.Errorf("ceiling error should name the accepted range 1 to 8; got: %q", gotCeiling)
 	}
 }
 
