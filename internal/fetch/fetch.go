@@ -51,8 +51,8 @@ type Params struct {
 
 // Result holds the output of a fetch. Title is the extracted article title
 // (possibly empty for non-article pages; for raw-text documents it is the URL
-// path basename). Content is the model-friendly body — markdown by default,
-// or plain text when Params.ReturnFormat is "text" — extracted by Readability
+// path basename). Content is the model-friendly body (markdown by default, or
+// plain text when Params.ReturnFormat is "text"), extracted by Readability
 // and falling back to the whole document so the reader never returns empty.
 // For raw-text documents Content is the decoded body verbatim, identical for
 // both formats (Passthrough, ADR-0006).

@@ -40,9 +40,9 @@ var mdConverter = converter.NewConverter(
 
 // extract turns a fetched HTML document into model-friendly content. It runs
 // a Readability-style extraction to isolate the main article, renders the
-// result as markdown (formatMarkdown) or plain text (formatText), and — when
+// result as markdown (formatMarkdown) or plain text (formatText), and, when
 // extraction yields little or nothing (e.g. a list page, homepage, or
-// dashboard with no single main article) — falls back to the whole document
+// dashboard with no single main article), falls back to the whole document
 // in the same format so the reader never returns empty output.
 //
 // baseURL lets relative links/images in the source resolve to absolute URLs.
@@ -74,9 +74,9 @@ func extract(htmlDoc, baseURL, format string) (title, content string, err error)
 }
 
 // extractPlainText is the return_format: text arm of Extraction (spec #16):
-// the readability article's own plain text — the same TextContent the
-// markdown arm renders from, with no markdown syntax emitted. When the page
-// has no article, the fallback returns the whole document's text via
+// the readability article's own plain text, the same TextContent the markdown
+// arm renders from, with no markdown syntax emitted. When the page has no
+// article, the fallback returns the whole document's text via
 // render.InnerText, the block-aware renderer the article's TextContent is
 // itself built from, so the fallback reads like the article arm minus
 // extraction. Never empty: a document with no text at all yields the
