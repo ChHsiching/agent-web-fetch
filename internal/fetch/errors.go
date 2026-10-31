@@ -83,6 +83,61 @@ func (e *PanicError) Error() string {
 	return fmt.Sprintf("recovered panic: %v", e.Recovered)
 }
 
+// InvalidMaxMBError is returned when the max_mb parameter falls outside its
+// allowed range: a positive integer no greater than the hard ceiling. The
+// message names the ceiling so the agent learns the boundary instead of
+// guessing (ADR-0007).
+type InvalidMaxMBError struct {
+	MaxMB   int
+	Ceiling int
+}
+
+func (e *InvalidMaxMBError) Error() string {
+	return fmt.Sprintf("invalid max_mb %d: must be an integer from 1 to %d", e.MaxMB, e.Ceiling)
+}
+
+// IsInvalidMaxMBError reports whether err is an InvalidMaxMBError.
+func IsInvalidMaxMBError(err error) bool {
+	var target *InvalidMaxMBError
+	return errors.As(err, &target)
+}
+
+// SizeLimitExceededError is returned when a response body is larger than the
+// active size cap. It states the document's size and the limit so the agent
+// can decide whether to raise max_mb or narrow the fetch (ADR-0007). The body
+// is never truncated: a truncated document would let the agent believe it has
+// the whole file when it does not.
+type SizeLimitExceededError struct {
+	// SizeBytes is the document's size in bytes when SizeKnown is true (a
+	// Content-Length declared it). Otherwise it is the lower bound the
+	// bounded read reached before stopping (always LimitBytes + 1).
+	SizeBytes int64
+	// LimitBytes is the active cap in bytes (MaxMB * 1 MiB).
+	LimitBytes int64
+	// SizeKnown reports whether the exact size was known up front.
+	SizeKnown bool
+}
+
+func (e *SizeLimitExceededError) Error() string {
+	if e.SizeKnown {
+		return fmt.Sprintf("size cap exceeded: document is %d bytes (%.1f MB), over the %.1f MB cap; raise max_mb (up to %d) or narrow the fetch. The body is never truncated",
+			e.SizeBytes, mbFloat(e.SizeBytes), mbFloat(e.LimitBytes), MaxMaxMB)
+	}
+	return fmt.Sprintf("size cap exceeded: document exceeds the %.1f MB cap (stopped reading at %d bytes); raise max_mb (up to %d) or narrow the fetch. The body is never truncated",
+		mbFloat(e.LimitBytes), e.LimitBytes+1, MaxMaxMB)
+}
+
+// IsSizeLimitExceededError reports whether err is a SizeLimitExceededError.
+func IsSizeLimitExceededError(err error) bool {
+	var target *SizeLimitExceededError
+	return errors.As(err, &target)
+}
+
+// mbFloat converts a byte count to megabytes for error-message formatting.
+func mbFloat(b int64) float64 {
+	return float64(b) / float64(megabyte)
+}
+
 // IsTimeoutError reports whether err is a TimeoutError or wraps a context
 // deadline-exceeded. Either form is treated as a timeout for the agent.
 func IsTimeoutError(err error) bool {
