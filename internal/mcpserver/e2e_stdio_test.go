@@ -190,7 +190,7 @@ func TestE2E_HTMLStillExtracted(t *testing.T) {
 // TestE2E_HTMLTextModeReturnsPlainText covers return_format: text on an HTML
 // page (spec #16) over the real transport: the same article page that comes
 // back as markdown by default must come back as plain text with no markdown
-// markers when text is requested — text mode is real, not a documented lie.
+// markers when text is requested. Text mode is real, not a documented lie.
 func TestE2E_HTMLTextModeReturnsPlainText(t *testing.T) {
 	const page = `<html><head><title>Plain Mode</title></head><body><article><h1>Plain Mode Heading</h1><p>The article body is long enough to clear the readability extraction threshold used by the fetch module, and it carries <strong>bold words</strong> plus <a href="https://example.com/x">a reference link</a> so markdown markers would show if any leaked.</p></article></body></html>`
 	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -17,7 +17,7 @@ import (
 
 // TestFetch_TextFormatReturnsPlainText asserts the core text-mode behaviour:
 // the same article page that markdown mode renders with headings, links, and
-// emphasis markers comes back as plain text — the readability article's text
+// emphasis markers comes back as plain text: the readability article's text
 // content, no markdown syntax anywhere.
 func TestFetch_TextFormatReturnsPlainText(t *testing.T) {
 	resetCache()
@@ -46,8 +46,8 @@ func TestFetch_TextFormatReturnsPlainText(t *testing.T) {
 
 // TestFetch_TextFormatFallsBackToWholeDocument asserts the no-article case:
 // a list page that markdown mode renders as bulleted links comes back as the
-// whole document's plain text — the list items' text, no link or bullet
-// markdown — honouring the same never-empty contract as markdown mode.
+// whole document's plain text: the list items' text, no link or bullet
+// markdown, honouring the same never-empty contract as markdown mode.
 func TestFetch_TextFormatFallsBackToWholeDocument(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respBody: sampleListPageHTML}
