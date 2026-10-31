@@ -102,6 +102,25 @@ func IsInvalidMaxMBError(err error) bool {
 	return errors.As(err, &target)
 }
 
+// InvalidReturnFormatError is returned when the return_format parameter is
+// not one of the accepted values ("markdown", "text"; empty means the
+// markdown default). Like InvalidMaxMBError, a typo'd parameter is a caller
+// mistake the reader surfaces with a typed error naming the accepted values
+// rather than silently defaulting (spec #16).
+type InvalidReturnFormatError struct {
+	Value string
+}
+
+func (e *InvalidReturnFormatError) Error() string {
+	return fmt.Sprintf("invalid return_format %q: must be \"markdown\" or \"text\"", e.Value)
+}
+
+// IsInvalidReturnFormatError reports whether err is an InvalidReturnFormatError.
+func IsInvalidReturnFormatError(err error) bool {
+	var target *InvalidReturnFormatError
+	return errors.As(err, &target)
+}
+
 // SizeLimitExceededError is returned when a response body is larger than the
 // active size cap. It states the document's size and the limit so the agent
 // can decide whether to raise max_mb or narrow the fetch (ADR-0007). The body

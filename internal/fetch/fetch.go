@@ -37,9 +37,10 @@ const megabyte = 1 << 20
 
 // Params holds the inputs to a single fetch. Timeout bounds the request (zero
 // means use DefaultTimeout). ReturnFormat selects "markdown" (default, when
-// empty) or "text". NoCache requests a fresh fetch that bypasses the cache.
-// MaxMB sets the response size cap in MB (zero means DefaultMaxMB); values
-// outside 1..MaxMaxMB are rejected with InvalidMaxMBError.
+// empty) or "text" (both case-insensitive; any other value is rejected with
+// InvalidReturnFormatError). NoCache requests a fresh fetch that bypasses the
+// cache. MaxMB sets the response size cap in MB (zero means DefaultMaxMB);
+// values outside 1..MaxMaxMB are rejected with InvalidMaxMBError.
 type Params struct {
 	URL          string
 	Timeout      time.Duration
@@ -85,7 +86,8 @@ var defaultCache = newCache(DefaultCacheTTL)
 // Fetch retrieves the content at params.URL. It validates the URL first: a
 // malformed, non-absolute, or non-http(s) URL returns an InvalidURLError
 // without issuing any request. An out-of-range params.MaxMB likewise returns
-// an InvalidMaxMBError before any lookup.
+// an InvalidMaxMBError before any lookup, as does an unknown non-empty
+// params.ReturnFormat (InvalidReturnFormatError).
 //
 // Validated results are served from the in-memory cache keyed by
 // (url, return_format, max_mb); params.NoCache forces a fresh fetch. The
@@ -115,6 +117,18 @@ func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Resul
 	// is a caller bug, and the agent should learn the ceiling immediately.
 	if params.MaxMB < 0 || params.MaxMB > MaxMaxMB {
 		return nil, &InvalidMaxMBError{MaxMB: params.MaxMB, Ceiling: MaxMaxMB}
+	}
+
+	// Validate and normalize return_format the same way: an unknown value is a
+	// caller bug to reject with a typed error, never silently defaulted.
+	// Accepted case-insensitively ("TEXT" == "text") like a sane API, and the
+	// normalized form replaces the input so case variants share one cache
+	// entry instead of fragmenting the key.
+	switch format := strings.ToLower(params.ReturnFormat); format {
+	case "", formatMarkdown, formatText:
+		params.ReturnFormat = format
+	default:
+		return nil, &InvalidReturnFormatError{Value: params.ReturnFormat}
 	}
 
 	// Serve from cache unless the caller forces a fresh fetch. The miss handler
