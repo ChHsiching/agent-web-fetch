@@ -39,7 +39,7 @@ type Deps struct {
 // newServer builds an MCP server exposing a single "fetch" tool. The handler
 // closes over deps so it can be tested with an injected client.
 func newServer(deps Deps) *mcp.Server {
-	server := mcp.NewServer(&mcp.Implementation{Name: "agent-web-fetch", Version: "v0.1.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "agent-web-fetch", Version: "v0.2.0"}, nil)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "fetch",
 		Description: "Fetch a URL and return its main content as model-friendly markdown. A free, uncapped replacement for paid web-reader tools. Raw text documents (markdown, JSON, XML, YAML, CSV and other text) are returned verbatim; both return_format values return identical content for raw files.",
