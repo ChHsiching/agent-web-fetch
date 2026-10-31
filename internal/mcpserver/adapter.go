@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -27,7 +28,7 @@ func configureLogging(logPath string) {
 	}
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		log.SetOutput(io.Discard)
+		fmt.Fprintf(os.Stderr, "agent-web-fetch: cannot open log file %s: %v\n", logPath, err)
 		return
 	}
 	log.SetOutput(f)
