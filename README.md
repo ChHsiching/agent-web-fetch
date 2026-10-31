@@ -2,8 +2,8 @@
 
 **English** | [简体中文](./README.zh-CN.md)
 
-[![GitHub release](https://img.shields.io/github/v/tag/ChHsiching/agent-web-fetch?include_prereleases&sort=semver)](https://github.com/ChHsiching/agent-web-fetch/releases/latest)
-[![License](https://img.shields.io/github/license/ChHsiching/agent-web-fetch)](https://github.com/ChHsiching/agent-web-fetch/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/ChHsiching/agent-web-fetch?color=blue)](https://github.com/ChHsiching/agent-web-fetch/releases/latest)
+[![License](https://img.shields.io/github/license/ChHsiching/agent-web-fetch?color=blue)](https://github.com/ChHsiching/agent-web-fetch/blob/main/LICENSE)
 
 A **free, uncapped web reader** for any agent client that speaks the Model
 Context Protocol, including Claude Code and ZCode. It takes a URL the agent

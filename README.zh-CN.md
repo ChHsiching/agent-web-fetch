@@ -2,8 +2,8 @@
 
 [English](./README.md) | **简体中文**
 
-[![GitHub release](https://img.shields.io/github/v/tag/ChHsiching/agent-web-fetch?include_prereleases&sort=semver)](https://github.com/ChHsiching/agent-web-fetch/releases/latest)
-[![License](https://img.shields.io/github/license/ChHsiching/agent-web-fetch)](https://github.com/ChHsiching/agent-web-fetch/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/ChHsiching/agent-web-fetch?color=blue)](https://github.com/ChHsiching/agent-web-fetch/releases/latest)
+[![License](https://img.shields.io/github/license/ChHsiching/agent-web-fetch?color=blue)](https://github.com/ChHsiching/agent-web-fetch/blob/main/LICENSE)
 
 一个**免费、不限量的网页阅读器**，面向任何支持 Model Context Protocol 的 agent 客户端，包括 Claude Code 和 ZCode。它接收 agent 已经持有的 URL，返回该页面的正文内容，格式是干净、对模型友好的 markdown。它是众多 agent 客户端内置的付费、限流 fetch 工具的替代品。
 
