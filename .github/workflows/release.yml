@@ -48,7 +48,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          # Pin the Go line go.mod requires (go 1.26.5). With '1.22' here, the
+          # build only worked because GOTOOLCHAIN silently auto-downloaded
+          # 1.26.5 on every runner; pinning removes that hidden dependency.
+          go-version: '1.26'
           cache: true
 
       - name: Run tests (only on the linux/amd64 variant to avoid 4x duplication)
