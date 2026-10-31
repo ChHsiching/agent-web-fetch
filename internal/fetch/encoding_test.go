@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
 
@@ -32,6 +34,30 @@ func gbkArticleHTML(charset string) string {
 func encodeGBK(s string) ([]byte, error) {
 	var buf bytes.Buffer
 	w := transform.NewWriter(&buf, simplifiedchinese.GBK.NewEncoder())
+	if _, err := io.WriteString(w, s); err != nil {
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func encodeUTF16LE(s string) ([]byte, error) {
+	var buf bytes.Buffer
+	w := transform.NewWriter(&buf, unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder())
+	if _, err := io.WriteString(w, s); err != nil {
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func encodeWindows1252(s string) ([]byte, error) {
+	var buf bytes.Buffer
+	w := transform.NewWriter(&buf, charmap.Windows1252.NewEncoder())
 	if _, err := io.WriteString(w, s); err != nil {
 		return nil, err
 	}
