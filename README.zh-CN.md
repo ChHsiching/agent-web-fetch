@@ -34,7 +34,7 @@ fetch({ "url": "https://example.com" })
 | --------------- | ---- | --------- | ----------------------------------------------------- |
 | `url`           | 是   | 无        | 要抓取的 URL。必须是绝对的 `http`/`https` URL。       |
 | `timeout`       | 否   | `30s`     | 单次请求超时，Go duration 字符串格式（如 `45s`）。    |
-| `return_format` | 否   | `markdown`| `markdown` 或 `text`。                                |
+| `return_format` | 否   | `markdown`| `markdown` 或 `text`。HTML 页面用 `text` 时返回不带 markdown 语法的纯文本；纯文本文件两种取值返回内容相同。 |
 | `no_cache`      | 否   | `false`   | 绕过内存缓存，强制重新抓取。                          |
 | `max_mb`        | 否   | `2`       | 响应大小上限（MB），取值 1 到 8。超限响应会报错并注明实际大小与当前上限，绝不截断。 |
 

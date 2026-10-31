@@ -54,7 +54,7 @@ audio/video) are still rejected with a clear error.
 | --------------- | -------- | ---------- | ---------------------------------------------------------------- |
 | `url`           | yes      | none       | The URL to fetch. Must be an absolute `http`/`https` URL.        |
 | `timeout`       | no       | `30s`      | Per-request timeout, as a Go duration string (e.g. `45s`).       |
-| `return_format` | no       | `markdown` | `markdown` or `text`.                                            |
+| `return_format` | no       | `markdown` | `markdown` or `text`. For HTML pages `text` returns the plain text without markdown syntax; for raw files both values return identical content. |
 | `no_cache`      | no       | `false`    | Bypass the in-memory cache and force a fresh fetch.              |
 | `max_mb`        | no       | `2`        | Response size cap in MB, from 1 to 8. Oversized responses are rejected with an error naming the size and the limit; never truncated. |
 
