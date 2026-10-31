@@ -22,12 +22,14 @@ import (
 
 // toolInput is the JSON schema for the fetch tool's parameters, inferred by
 // the MCP SDK from struct tags. Mirrors the contract the spec defines. URL has
-// no omitempty, so the SDK treats it as required.
+// no omitempty, so the SDK treats it as required. MaxMB is a pointer so an
+// explicit 0 can be told apart from an absent value and rejected (ADR-0007).
 type toolInput struct {
 	URL          string `json:"url" jsonschema:"The URL to fetch"`
 	Timeout      string `json:"timeout,omitempty" jsonschema:"Per-request timeout as a Go duration string (e.g. 30s). Defaults to 30s."`
 	ReturnFormat string `json:"return_format,omitempty" jsonschema:"Output format: markdown or text. Defaults to markdown."`
 	NoCache      bool   `json:"no_cache,omitempty" jsonschema:"Bypass the in-memory cache and force a fresh fetch."`
+	MaxMB        *int   `json:"max_mb,omitempty" jsonschema:"Response size cap in MB. Defaults to 2, hard ceiling 8. Oversized responses are rejected with an error, never truncated."`
 }
 
 // Deps holds the injectable dependencies of the server, so tests can supply a
@@ -42,7 +44,7 @@ func newServer(deps Deps) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "agent-web-fetch", Version: "v0.2.0"}, nil)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "fetch",
-		Description: "Fetch a URL and return its main content as model-friendly markdown. A free, uncapped replacement for paid web-reader tools. Raw text documents (markdown, JSON, XML, YAML, CSV and other text) are returned verbatim; both return_format values return identical content for raw files.",
+		Description: "Fetch a URL and return its main content as model-friendly markdown. A free, uncapped replacement for paid web-reader tools. Raw text documents (markdown, JSON, XML, YAML, CSV and other text) are returned verbatim; both return_format values return identical content for raw files. Responses larger than the size cap are rejected with an error stating the actual size and the active limit, never truncated: the cap defaults to 2 MB and max_mb raises it up to 8.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in toolInput) (res *mcp.CallToolResult, _ any, _ error) {
 		// Defense-in-depth: fetch.Fetch already recovers panics in the
 		// fetch/extract path, but recover here too so the MCP server process
@@ -86,6 +88,15 @@ func handleFetch(ctx context.Context, in toolInput, client fetch.HTTPClient) (*f
 			return nil, fmt.Errorf("invalid timeout %q: %w", in.Timeout, err)
 		}
 		params.Timeout = d
+	}
+	if in.MaxMB != nil {
+		// The pointer distinguishes an explicit value from an absent one. Zero
+		// or negative is a caller mistake to reject (ADR-0007); values above
+		// the ceiling are rejected by fetch.Fetch with the ceiling named.
+		if *in.MaxMB <= 0 {
+			return nil, &fetch.InvalidMaxMBError{MaxMB: *in.MaxMB, Ceiling: fetch.MaxMaxMB}
+		}
+		params.MaxMB = *in.MaxMB
 	}
 	return fetch.Fetch(ctx, params, client)
 }
