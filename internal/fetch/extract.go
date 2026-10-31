@@ -16,6 +16,15 @@ import (
 // reject nav/footer bleed-through while accepting any genuine short article.
 const minReadableLen = 50
 
+// The two return_format values the reader accepts for HTML pages (CONTEXT.md:
+// Extraction produces "model-friendly content (markdown/text)"). The empty
+// string means the markdown default, the same convention cacheKey uses;
+// anything else is rejected by Fetch before it reaches here.
+const (
+	formatMarkdown = "markdown"
+	formatText     = "text"
+)
+
 // mdConverter converts HTML fragments to GitHub-flavored markdown (base +
 // commonmark + table), preserving links and images so the model can reference
 // them. Configured once; safe for concurrent use.
