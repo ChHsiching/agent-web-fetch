@@ -27,7 +27,7 @@ import (
 type toolInput struct {
 	URL          string `json:"url" jsonschema:"The URL to fetch"`
 	Timeout      string `json:"timeout,omitempty" jsonschema:"Per-request timeout as a Go duration string (e.g. 30s). Defaults to 30s."`
-	ReturnFormat string `json:"return_format,omitempty" jsonschema:"Output format: markdown or text. Defaults to markdown."`
+	ReturnFormat string `json:"return_format,omitempty" jsonschema:"Output format for HTML pages: markdown (default) or text (plain text, no markdown syntax). For raw text documents both values return identical verbatim content."`
 	NoCache      bool   `json:"no_cache,omitempty" jsonschema:"Bypass the in-memory cache and force a fresh fetch."`
 	MaxMB        *int   `json:"max_mb,omitempty" jsonschema:"Response size cap in MB. Defaults to 2, hard ceiling 8. Oversized responses are rejected with an error, never truncated."`
 }
@@ -51,7 +51,7 @@ func newServer(deps Deps) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "agent-web-fetch", Version: Version}, nil)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "fetch",
-		Description: "Fetch a URL and return its main content as model-friendly markdown. A free, uncapped replacement for paid web-reader tools. Raw text documents (markdown, JSON, XML, YAML, CSV and other text) are returned verbatim; both return_format values return identical content for raw files. Responses larger than the size cap are rejected with an error stating the actual size and the active limit, never truncated: the cap defaults to 2 MB and max_mb raises it up to 8.",
+		Description: "Fetch a URL and return its main content as model-friendly markdown, or as plain text with return_format: text (no markdown syntax). A free, uncapped replacement for paid web-reader tools. Raw text documents (markdown, JSON, XML, YAML, CSV and other text) are returned verbatim; both return_format values return identical content for raw files. Responses larger than the size cap are rejected with an error stating the actual size and the active limit, never truncated: the cap defaults to 2 MB and max_mb raises it up to 8.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in toolInput) (res *mcp.CallToolResult, _ any, _ error) {
 		// Defense-in-depth: fetch.Fetch already recovers panics in the
 		// fetch/extract path, but recover here too so the MCP server process
