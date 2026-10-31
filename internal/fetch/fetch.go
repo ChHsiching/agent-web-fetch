@@ -91,7 +91,7 @@ var defaultCache = newCache(DefaultCacheTTL)
 // (url, return_format, max_mb); params.NoCache forces a fresh fetch. The
 // request is bounded by params.Timeout (default 30s). A non-2xx response
 // returns an HTTPError. A body over the size cap (params.MaxMB MB, default 2,
-// ceiling 8) returns a SizeLimitExceededError — the body is rejected, never
+// ceiling 8) returns a SizeLimitExceededError: the body is rejected, never
 // truncated (ADR-0007). An HTML response is extracted as today; a raw-text
 // response (ADR-0006) is returned verbatim; any other content type returns an
 // UnsupportedContentError. A transport failure returns a FetchError. Any panic
@@ -153,9 +153,9 @@ func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Resu
 
 	// Enforce the size cap (ADR-0007). A declared Content-Length allows an
 	// early reject before a single body byte is buffered; chunked or lying
-	// responses are caught by the bounded read below. Both accepted arms —
-	// Extraction and Passthrough — read through this cap, so a giant page and
-	// a giant raw file flood the context equally never.
+	// responses are caught by the bounded read below. Both accepted arms
+	// (Extraction and Passthrough) read through this cap, so neither a giant
+	// page nor a giant raw file can flood the context.
 	limitBytes := limitFor(params.MaxMB)
 	if resp.ContentLength > limitBytes {
 		return nil, &SizeLimitExceededError{
@@ -204,7 +204,7 @@ func limitFor(maxMB int) int64 {
 // read failure into the structured transport error for url (timeout vs fetch
 // failure). Reading one byte past the limit proves the document is over the
 // cap without buffering more of it (ADR-0007). It is the shared read step of
-// both accepted arms in fetchUncached — Extraction and Passthrough — while
+// both accepted arms in fetchUncached, Extraction and Passthrough, while
 // rejected content types return above before any body is read (ADR-0006).
 func readBody(body io.Reader, url string, limitBytes int64) ([]byte, error) {
 	b, err := io.ReadAll(io.LimitReader(body, limitBytes+1))

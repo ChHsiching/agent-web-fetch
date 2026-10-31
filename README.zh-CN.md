@@ -33,6 +33,7 @@ fetch({ "url": "https://example.com" })
 | `timeout`       | 否   | `30s`     | 单次请求超时，Go duration 字符串格式（如 `45s`）。    |
 | `return_format` | 否   | `markdown`| `markdown` 或 `text`。                                |
 | `no_cache`      | 否   | `false`   | 绕过内存缓存，强制重新抓取。                          |
+| `max_mb`        | 否   | `2`       | 响应大小上限（MB），取值 1 到 8。超限响应会报错并注明实际大小与当前上限，绝不截断。 |
 
 ### 它**不**做什么
 
