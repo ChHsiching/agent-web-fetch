@@ -16,7 +16,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          # Pin the Go line go.mod requires (go 1.26.5). With '1.22' here, the
+          # build only worked because GOTOOLCHAIN silently auto-downloaded
+          # 1.26.5 on every runner; pinning removes that hidden dependency.
+          go-version: '1.26'
           cache: true
       - name: Check gofmt
         run: |
@@ -36,3 +39,10 @@ jobs:
         run: go build ./...
       - name: Test
         run: go test ./...
+      - name: E2E test
+        # Run the e2e stdio suite, which builds the real binary and drives it
+        # as a subprocess MCP server. It catches regressions the in-process
+        # unit tests cannot see (stdout purity breaks the ndjson framing,
+        # process startup, tool registration over the wire). AWF_E2E_REAL is
+        # unset in CI, so the live-network case stays skipped.
+        run: go test -tags=e2e ./internal/mcpserver

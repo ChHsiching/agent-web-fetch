@@ -106,6 +106,43 @@ func TestServer_ErrorsSurfacedAsToolResult(t *testing.T) {
 	}
 }
 
+// TestServer_ReportsVersionVar asserts the version in the initialize
+// handshake comes from the Version package variable, not a hardcoded string:
+// anything built without linker injection (local builds, CI) reports "dev",
+// and the release workflow's -ldflags -X overwrites it with the tag (spec
+// #16: a release can never ship reporting a stale version).
+func TestServer_ReportsVersionVar(t *testing.T) {
+	connectVersion := func(t *testing.T) string {
+		t.Helper()
+		server := newServer(Deps{Client: &fakeFetchClient{}})
+		serverTransport, clientTransport := mcp.NewInMemoryTransports()
+		go server.Run(context.Background(), serverTransport)
+
+		client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v0.0.0"}, nil)
+		session, err := client.Connect(context.Background(), clientTransport, nil)
+		if err != nil {
+			t.Fatalf("client connect: %v", err)
+		}
+		defer session.Close()
+		info := session.InitializeResult().ServerInfo
+		if info == nil {
+			t.Fatal("initialize result missing serverInfo")
+		}
+		return info.Version
+	}
+
+	if got := connectVersion(t); got != "dev" {
+		t.Errorf("default version = %q, want %q", got, "dev")
+	}
+
+	old := Version
+	Version = "v9.9.9-test"
+	t.Cleanup(func() { Version = old })
+	if got := connectVersion(t); got != "v9.9.9-test" {
+		t.Errorf("injected version = %q, want %q", got, "v9.9.9-test")
+	}
+}
+
 // errNetwork is a stand-in transport error for the failure-path test.
 var errNetwork = &networkErr{}
 

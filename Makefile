@@ -7,8 +7,11 @@
 BINARY   := agent-web-fetch
 CMD      := ./cmd/agent-web-fetch
 DIST     := dist
+# VERSION is stamped into the server binary via -X, the same linker injection
+# the release workflow uses, so `make release VERSION=vX.Y.Z` reports the same
+# version as a CI-built release. The default reports "dev".
 VERSION  ?= dev
-LDFLAGS  := -s -w
+LDFLAGS  := -s -w -X github.com/ChHsiching/agent-web-fetch/internal/mcpserver.Version=$(VERSION)
 
 # The four target platforms. Each is GOOS/GOARCH.
 TARGETS := \
