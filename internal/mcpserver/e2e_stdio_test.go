@@ -3,7 +3,9 @@
 package mcpserver
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +16,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
 )
 
 var e2eBinary string
@@ -76,6 +80,18 @@ func newE2EServer(t *testing.T, handler http.Handler) *httptest.Server {
 	return ts
 }
 
+func encodeLatin1(s string) ([]byte, error) {
+	var buf bytes.Buffer
+	w := transform.NewWriter(&buf, charmap.ISO8859_1.NewEncoder())
+	if _, err := io.WriteString(w, s); err != nil {
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // TestE2E_RawTextPassedThroughVerbatim is the heart of issue #11: a text/plain
 // document (e.g. raw.githubusercontent.com markdown) must come back byte-for-
 // byte — no code fences, no prefix, no extraction.
@@ -125,9 +141,13 @@ func TestE2E_JSONPassedThroughVerbatim(t *testing.T) {
 }
 
 func TestE2E_CharsetDecodedToUTF8(t *testing.T) {
+	body, err := encodeLatin1("café menu\r\nsecond line\r\n")
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
 	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=iso-8859-1")
-		_, _ = w.Write([]byte("caf\xe9 menu\r\nsecond line\r\n"))
+		_, _ = w.Write(body)
 	}))
 	session := e2eSession(t)
 

@@ -167,7 +167,10 @@ func TestFetch_PlainTextGBKDeclaredCharsetDecodes(t *testing.T) {
 func TestFetch_PlainTextLegacyBytesDecodeWithoutError(t *testing.T) {
 	t.Run("utf16 BOM", func(t *testing.T) {
 		resetCache()
-		utf16le := []byte{0xFF, 0xFE, 'c', 0x00, 'a', 0x00, 'f', 0x00, 0xE9, 0x00}
+		utf16le, err := encodeUTF16LE("café")
+		if err != nil {
+			t.Fatalf("encode: %v", err)
+		}
 		client := &fakeHTTPClient{respCT: "text/plain", respBody: string(utf16le)}
 
 		result, err := Fetch(context.Background(), Params{URL: "https://example.com/legacy.txt"}, client)
@@ -183,7 +186,11 @@ func TestFetch_PlainTextLegacyBytesDecodeWithoutError(t *testing.T) {
 	})
 	t.Run("cp1252 fallback", func(t *testing.T) {
 		resetCache()
-		client := &fakeHTTPClient{respCT: "text/plain", respBody: "caf\xe9 au lait"}
+		body, err := encodeWindows1252("café au lait")
+		if err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		client := &fakeHTTPClient{respCT: "text/plain", respBody: string(body)}
 
 		result, err := Fetch(context.Background(), Params{URL: "https://example.com/legacy.txt"}, client)
 
