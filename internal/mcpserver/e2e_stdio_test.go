@@ -205,6 +205,44 @@ func TestE2E_UnsupportedContentTypeStillRejected(t *testing.T) {
 	}
 }
 
+// TestE2E_OversizedBodyRejectedThenAdmittedWithMaxMB covers the size cap
+// (ADR-0007) over the real transport. The body is ~2.1 MB served chunked (a
+// body this size never gets a Content-Length from httptest, so the bounded
+// read is what enforces the cap): the default 2 MB cap must reject it as an
+// IsError result naming the cap, and max_mb=3 must admit the same URL whole.
+func TestE2E_OversizedBodyRejectedThenAdmittedWithMaxMB(t *testing.T) {
+	body := strings.Repeat("e2e", 700*1024+100) // ~2.1 MB of repeated text
+	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte(body))
+	}))
+	session := e2eSession(t)
+
+	got, isError := e2eCall(t, session, map[string]any{"url": ts.URL + "/huge.txt"})
+	if !isError {
+		t.Fatalf("expected IsError for a 2.1 MB body under the 2 MB default cap, got content of %d bytes", len(got))
+	}
+	if !strings.Contains(got, "size cap exceeded") || !strings.Contains(got, "max_mb") {
+		t.Errorf("error should state the cap and the max_mb escape hatch; got: %q", got)
+	}
+
+	gotRaised, isError := e2eCall(t, session, map[string]any{"url": ts.URL + "/huge.txt", "max_mb": 3})
+	if isError {
+		t.Fatalf("expected max_mb=3 to admit the 2.1 MB body, got: %s", gotRaised)
+	}
+	if gotRaised != body {
+		t.Errorf("raised-cap fetch must return the body whole; got %d bytes, want %d", len(gotRaised), len(body))
+	}
+
+	gotCeiling, isError := e2eCall(t, session, map[string]any{"url": ts.URL + "/huge.txt", "max_mb": 9})
+	if !isError {
+		t.Fatalf("expected IsError for max_mb above the ceiling, got content of %d bytes", len(gotCeiling))
+	}
+	if !strings.Contains(gotCeiling, "8") {
+		t.Errorf("ceiling error should name 8; got: %q", gotCeiling)
+	}
+}
+
 // TestE2E_ToolDescriptionSurfacesPassthrough checks the #14 surface: the tool
 // description a client sees over the wire must tell the model that raw text
 // documents come back verbatim.
