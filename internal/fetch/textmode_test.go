@@ -91,6 +91,72 @@ func TestFetch_TextFormatNeverEmpty(t *testing.T) {
 	}
 }
 
+// TestFetch_TextFormatCaseInsensitiveSharesEntry asserts the case-insensitive
+// contract end to end: "TEXT" fetches the same plain text as "text", and the
+// normalized spelling shares one cache entry rather than fragmenting it into
+// a second HTTP call.
+func TestFetch_TextFormatCaseInsensitiveSharesEntry(t *testing.T) {
+	resetCache()
+	client := &fakeHTTPClient{respBody: sampleArticleHTML}
+	url := "https://example.com/case-format"
+
+	asLower, err := Fetch(context.Background(), Params{URL: url, ReturnFormat: "text"}, client)
+	if err != nil {
+		t.Fatalf("text: %v", err)
+	}
+	asUpper, err := Fetch(context.Background(), Params{URL: url, ReturnFormat: "TEXT"}, client)
+	if err != nil {
+		t.Fatalf("TEXT: %v", err)
+	}
+
+	if asLower.Content != asUpper.Content {
+		t.Errorf("case variants should return identical content; text=%q TEXT=%q", asLower.Content, asUpper.Content)
+	}
+	if client.calls != 1 {
+		t.Errorf("case variants should share one cache entry (1 HTTP call), got %d call(s)", client.calls)
+	}
+}
+
+// TestFetch_TextAndMarkdownCacheNeverCrossServes asserts the two formats are
+// separate cache entries that never serve each other: fetching the same URL
+// as markdown then as text makes two HTTP calls with different content, and a
+// repeat text fetch is served the text entry, not the markdown one.
+func TestFetch_TextAndMarkdownCacheNeverCrossServes(t *testing.T) {
+	resetCache()
+	client := &fakeHTTPClient{respBody: sampleArticleHTML}
+	url := "https://example.com/dual-format"
+
+	asMarkdown, err := Fetch(context.Background(), Params{URL: url}, client)
+	if err != nil {
+		t.Fatalf("markdown fetch: %v", err)
+	}
+	asText, err := Fetch(context.Background(), Params{URL: url, ReturnFormat: "text"}, client)
+	if err != nil {
+		t.Fatalf("text fetch: %v", err)
+	}
+
+	if client.calls != 2 {
+		t.Fatalf("the two formats must be separate cache entries (2 HTTP calls), got %d", client.calls)
+	}
+	if !strings.Contains(asMarkdown.Content, "](https://example.com/ref") {
+		t.Errorf("markdown entry should carry link markdown; got:\n%s", asMarkdown.Content)
+	}
+	if strings.Contains(asText.Content, "](https://example.com/ref") {
+		t.Errorf("text entry must not contain markdown; got:\n%s", asText.Content)
+	}
+
+	asTextAgain, err := Fetch(context.Background(), Params{URL: url, ReturnFormat: "text"}, client)
+	if err != nil {
+		t.Fatalf("text refetch: %v", err)
+	}
+	if client.calls != 2 {
+		t.Errorf("repeat text fetch should hit the text cache entry, got %d call(s)", client.calls)
+	}
+	if asTextAgain.Content != asText.Content {
+		t.Errorf("repeat text fetch must serve the text entry, not markdown; got:\n%s", asTextAgain.Content)
+	}
+}
+
 // TestFetch_UnknownReturnFormatRejected asserts that an unknown non-empty
 // return_format is a caller mistake the reader surfaces immediately, mirroring
 // the max_mb validation philosophy (ADR-0007): reject with a typed error that
