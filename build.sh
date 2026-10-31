@@ -6,12 +6,17 @@
 # is statically linked with no external runtime dependency (ADR-0001).
 #
 # Usage: ./build.sh
+#        VERSION=vX.Y.Z ./build.sh   # stamps the version instead of "dev"
 set -euo pipefail
 
 BINARY="agent-web-fetch"
 CMD="./cmd/agent-web-fetch"
 DIST="dist"
-LDFLAGS="-s -w"
+# VERSION is stamped into the server binary via -X, the same linker injection
+# the release workflow uses, so `VERSION=vX.Y.Z ./build.sh` reports the same
+# version as a CI-built release. The default reports "dev".
+VERSION="${VERSION:-dev}"
+LDFLAGS="-s -w -X github.com/ChHsiching/agent-web-fetch/internal/mcpserver.Version=${VERSION}"
 
 # Start from a clean dist/ so stale binaries from a prior run don't linger.
 rm -rf "$DIST"
