@@ -70,16 +70,12 @@ func (c *cache) get(params Params, forceFresh bool, onMiss func(Params) (*Result
 
 // cacheKey is the composite key distinguishing url, return_format, and max_mb.
 // Same URL with a different format or size cap is a separate entry: a result
-// fetched under a 8 MB cap must never be served to a caller asking for the
+// fetched under an 8 MB cap must never be served to a caller asking for the
 // 2 MB default (ADR-0007).
 func cacheKey(params Params) string {
 	format := params.ReturnFormat
 	if format == "" {
 		format = "markdown"
 	}
-	maxMB := params.MaxMB
-	if maxMB <= 0 {
-		maxMB = DefaultMaxMB
-	}
-	return format + "\x00" + params.URL + "\x00" + strconv.Itoa(maxMB)
+	return format + "\x00" + params.URL + "\x00" + strconv.Itoa(effectiveMaxMB(params.MaxMB))
 }
