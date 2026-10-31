@@ -51,10 +51,11 @@ type Params struct {
 
 // Result holds the output of a fetch. Title is the extracted article title
 // (possibly empty for non-article pages; for raw-text documents it is the URL
-// path basename). Content is the model-friendly markdown body — extracted by
-// Readability, falling back to full-document markdown so the reader never
-// returns empty. For raw-text documents Content is the decoded body verbatim
-// (Passthrough, ADR-0006).
+// path basename). Content is the model-friendly body — markdown by default,
+// or plain text when Params.ReturnFormat is "text" — extracted by Readability
+// and falling back to the whole document so the reader never returns empty.
+// For raw-text documents Content is the decoded body verbatim, identical for
+// both formats (Passthrough, ADR-0006).
 type Result struct {
 	Title   string
 	Content string
@@ -188,11 +189,11 @@ func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Resu
 		if err != nil {
 			return nil, err
 		}
-		title, markdown, err := extract(string(body), params.URL)
+		title, content, err := extract(string(body), params.URL, params.ReturnFormat)
 		if err != nil {
 			return nil, &FetchError{Err: err}
 		}
-		return &Result{Title: title, Content: markdown}, nil
+		return &Result{Title: title, Content: content}, nil
 	case isRawTextContentType(ct):
 		body, err := readBody(resp.Body, params.URL, limitBytes)
 		if err != nil {

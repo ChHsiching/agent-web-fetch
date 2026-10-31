@@ -5,10 +5,12 @@ import (
 	"strings"
 
 	readability "codeberg.org/readeck/go-readability"
+	"codeberg.org/readeck/go-readability/render"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
+	"golang.org/x/net/html"
 )
 
 // minReadableLen is the floor below which a Readability extraction is treated
@@ -37,16 +39,21 @@ var mdConverter = converter.NewConverter(
 )
 
 // extract turns a fetched HTML document into model-friendly content. It runs
-// a Readability-style extraction to isolate the main article, converts the
-// result to markdown, and — when extraction yields little or nothing (e.g. a
-// list page, homepage, or dashboard with no single main article) — falls back
-// to full-document markdown so the reader never returns empty output.
+// a Readability-style extraction to isolate the main article, renders the
+// result as markdown (formatMarkdown) or plain text (formatText), and — when
+// extraction yields little or nothing (e.g. a list page, homepage, or
+// dashboard with no single main article) — falls back to the whole document
+// in the same format so the reader never returns empty output.
 //
 // baseURL lets relative links/images in the source resolve to absolute URLs.
-// Returns the extracted title (possibly empty on fallback) and the markdown.
-func extract(htmlDoc, baseURL string) (title, markdown string, err error) {
+// Returns the extracted title (possibly empty on fallback) and the content.
+// The format must already be validated and normalized by Fetch.
+func extract(htmlDoc, baseURL, format string) (title, content string, err error) {
 	pageURL, _ := url.Parse(baseURL)
 	article, extractErr := readability.FromReader(strings.NewReader(htmlDoc), pageURL)
+	if format == formatText {
+		return extractPlainText(htmlDoc, article, extractErr)
+	}
 	if extractErr == nil && len(strings.TrimSpace(article.TextContent)) >= minReadableLen {
 		md, convErr := mdConverter.ConvertString(article.Content)
 		if convErr == nil && strings.TrimSpace(md) != "" {
@@ -64,6 +71,28 @@ func extract(htmlDoc, baseURL string) (title, markdown string, err error) {
 		return "", emptyContentPlaceholder, nil
 	}
 	return "", md, nil
+}
+
+// extractPlainText is the return_format: text arm of Extraction (spec #16):
+// the readability article's own plain text — the same TextContent the
+// markdown arm renders from, with no markdown syntax emitted. When the page
+// has no article, the fallback returns the whole document's text via
+// render.InnerText, the block-aware renderer the article's TextContent is
+// itself built from, so the fallback reads like the article arm minus
+// extraction. Never empty: a document with no text at all yields the
+// placeholder, mirroring the markdown fallback's contract.
+func extractPlainText(htmlDoc string, article readability.Article, extractErr error) (title, text string, err error) {
+	if extractErr == nil && len(strings.TrimSpace(article.TextContent)) >= minReadableLen {
+		return article.Title, strings.TrimSpace(article.TextContent), nil
+	}
+	doc, parseErr := html.Parse(strings.NewReader(htmlDoc))
+	if parseErr != nil {
+		return "", "", parseErr
+	}
+	if text := strings.TrimSpace(render.InnerText(doc)); text != "" {
+		return "", text, nil
+	}
+	return "", emptyContentPlaceholder, nil
 }
 
 // emptyContentPlaceholder is returned when a document has no extractable text
