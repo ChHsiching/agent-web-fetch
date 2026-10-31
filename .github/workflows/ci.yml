@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           # Pin the Go line go.mod requires (go 1.26.5). With '1.22' here, the
           # build only worked because GOTOOLCHAIN silently auto-downloaded
