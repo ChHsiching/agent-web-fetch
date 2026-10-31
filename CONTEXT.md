@@ -30,6 +30,13 @@ reformatting. A path parallel to Extraction, taken when the body is already
 model-friendly as-is.
 _Avoid_: Extraction (the HTML-only path), Processing (any transformation)
 
+**Size Cap**:
+The upper bound on a response body: 2 MB by default, raised per call with
+`max_mb` up to a hard ceiling of 8 MB. A body over the cap is rejected with an
+error stating the document's size and the active limit, never truncated,
+since a truncated body looks whole and lies to the agent.
+_Avoid_: Truncation (the rejected alternative), rate limiting (unrelated)
+
 **Processing**:
 Any transformation *beyond* fetch + extract — summaries, translations, image
 descriptions, link digests, reformatting. Explicitly **out of scope**: the

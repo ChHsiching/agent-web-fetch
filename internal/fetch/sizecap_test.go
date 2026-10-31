@@ -174,7 +174,7 @@ func TestFetch_ContentLengthRejectsBeforeRead(t *testing.T) {
 
 // TestFetch_MaxMBOptOutAdmitsLargeDocument asserts the opt-out: a document
 // between the default cap and the ceiling (here 2.5 MB under max_mb=8) comes
-// back whole, verbatim — the cap is raised, the body is not clipped.
+// back whole and verbatim. The cap is raised, the body is not clipped.
 func TestFetch_MaxMBOptOutAdmitsLargeDocument(t *testing.T) {
 	resetCache()
 	body := string(bytes.Repeat([]byte("z"), 2*megabyte+512*1024))
@@ -193,7 +193,7 @@ func TestFetch_MaxMBOptOutAdmitsLargeDocument(t *testing.T) {
 // TestFetch_MaxMBCacheNeverCrossServes asserts max_mb participates in the
 // cache key: a document admitted under a raised cap (2.5 MB with max_mb=3) is
 // not served to a default-cap fetch of the same URL, which must re-fetch and
-// reject. The reverse order is covered by construction — errors are never
+// reject. The reverse order is covered by construction: errors are never
 // cached.
 func TestFetch_MaxMBCacheNeverCrossServes(t *testing.T) {
 	resetCache()
