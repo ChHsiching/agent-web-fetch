@@ -205,14 +205,23 @@ func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Resu
 	}
 }
 
-// limitFor returns the size cap in bytes for a max_mb value, applying the
-// default when it is zero. Callers must have validated the value already
-// (Fetch rejects out-of-range max_mb before the cache).
-func limitFor(maxMB int) int64 {
+// effectiveMaxMB resolves a max_mb value to the cap actually in force,
+// applying the default when the value is zero or less. It is the one place
+// the zero-means-default rule lives so the byte cap and the cache key can
+// never disagree about what a value resolved to (a disagreement would let
+// the same document be served under the wrong cap, ADR-0007). Callers must
+// have validated the value already (Fetch rejects out-of-range max_mb before
+// the cache).
+func effectiveMaxMB(maxMB int) int {
 	if maxMB <= 0 {
-		maxMB = DefaultMaxMB
+		return DefaultMaxMB
 	}
-	return int64(maxMB) * megabyte
+	return maxMB
+}
+
+// limitFor returns the size cap in bytes for a max_mb value.
+func limitFor(maxMB int) int64 {
+	return int64(effectiveMaxMB(maxMB)) * megabyte
 }
 
 // readBody reads at most limit+1 bytes of the response body, translating a
