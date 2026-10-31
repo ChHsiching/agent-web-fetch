@@ -23,7 +23,7 @@ permissions:
 jobs:
   build:
     name: build (${{ matrix.goos }}/${{ matrix.goarch }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -74,7 +74,7 @@ jobs:
             -o "dist/${{ matrix.asset }}" ./cmd/agent-web-fetch
 
       - name: Upload asset to the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # Attach just this platform's binary. The release itself (title,
           # notes) is created by the first matrix leg that runs; subsequent
@@ -88,10 +88,10 @@ jobs:
   attest:
     name: attach build info + checksums
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download all release assets and compute checksums
         env:
@@ -147,7 +147,7 @@ jobs:
           } > BUILD_INFO.md
 
       - name: Attach BUILD_INFO and SHA256SUMS to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             BUILD_INFO.md
