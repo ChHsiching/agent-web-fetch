@@ -7,14 +7,6 @@ import (
 	"time"
 )
 
-// These tests lock down the raw-text passthrough path (ADR-0006, CONTEXT.md
-// "Passthrough"): responses that are already text are decoded to UTF-8 and
-// returned verbatim — no extraction, no code fences, no prefixes. They
-// exercise the same public Fetch seam with the injected fake client as the
-// fetch / errors / encoding tests. Expected decodings follow the documented
-// behaviour of golang.org/x/net/html/charset (header charset → BOM → sniff →
-// windows-1252 fallback).
-
 // TestFetch_PlainTextPassthroughVerbatim asserts the issue-#11 repro: a
 // text/plain response (how raw.githubusercontent.com serves .md/.txt/.json
 // files) returns its full body verbatim, with the title derived from the URL
@@ -40,11 +32,6 @@ func TestFetch_PlainTextPassthroughVerbatim(t *testing.T) {
 	}
 }
 
-// TestFetch_RawTextTypesPassThroughVerbatim asserts the full ADR-0006 accepted
-// type list: every raw-text media type returns the body verbatim. Structured
-// bodies (JSON/XML/YAML/JS) are content, not accidents — a JSON API response
-// must reach the agent exactly as served. Header case and parameters must not
-// affect classification.
 func TestFetch_RawTextTypesPassThroughVerbatim(t *testing.T) {
 	cases := []struct {
 		name string
@@ -82,8 +69,6 @@ func TestFetch_RawTextTypesPassThroughVerbatim(t *testing.T) {
 	}
 }
 
-// TestFetch_RawTextTitleIsURLBasename asserts the passthrough title rule: the
-// URL path basename, falling back to the host when the path has none.
 func TestFetch_RawTextTitleIsURLBasename(t *testing.T) {
 	cases := []struct {
 		url  string
@@ -111,11 +96,6 @@ func TestFetch_RawTextTitleIsURLBasename(t *testing.T) {
 	}
 }
 
-// TestFetch_BinaryTypesStillRejected asserts the rejection side of the
-// classification: PDFs, images, media, and generic binaries keep failing with
-// the existing UnsupportedContentError, whose message names the type. (The PDF
-// case is also covered by errors_test.go; this table pins the boundary of the
-// newly accepted raw-text list.)
 func TestFetch_BinaryTypesStillRejected(t *testing.T) {
 	cases := []string{
 		"application/pdf",
@@ -165,11 +145,6 @@ func TestFetch_EmptyContentTypeStillRejected(t *testing.T) {
 	}
 }
 
-// TestFetch_PlainTextGBKDeclaredCharsetDecodes asserts that a GBK-encoded
-// plain-text file whose Content-Type declares charset=gbk decodes to correct
-// UTF-8 — the raw-text twin of the GBK-HTML regression tests in
-// encoding_test.go. The declared charset parameter must be honoured first, so
-// correctly-labelled Chinese text is never mis-decoded.
 func TestFetch_PlainTextGBKDeclaredCharsetDecodes(t *testing.T) {
 	resetCache()
 	const chinese = "这是一段用 GBK 编码的纯文本正文。"
@@ -189,15 +164,9 @@ func TestFetch_PlainTextGBKDeclaredCharsetDecodes(t *testing.T) {
 	}
 }
 
-// TestFetch_PlainTextLegacyBytesDecodeWithoutError asserts the BOM / sniff /
-// windows-1252 fallback chain for text that is undeclared or mislabelled: a
-// UTF-16 body is recognized by its BOM, unlabelled single-byte-high text
-// falls back to windows-1252 (browser behaviour), and undeclared GBK decodes
-// to replacement text without failing the fetch.
 func TestFetch_PlainTextLegacyBytesDecodeWithoutError(t *testing.T) {
 	t.Run("utf16 BOM", func(t *testing.T) {
 		resetCache()
-		// "café" as UTF-16LE with a BOM, served as bare text/plain.
 		utf16le := []byte{0xFF, 0xFE, 'c', 0x00, 'a', 0x00, 'f', 0x00, 0xE9, 0x00}
 		client := &fakeHTTPClient{respCT: "text/plain", respBody: string(utf16le)}
 
@@ -214,7 +183,6 @@ func TestFetch_PlainTextLegacyBytesDecodeWithoutError(t *testing.T) {
 	})
 	t.Run("cp1252 fallback", func(t *testing.T) {
 		resetCache()
-		// "caf<0xE9>" — windows-1252 bytes for "café", no charset declared.
 		client := &fakeHTTPClient{respCT: "text/plain", respBody: "caf\xe9 au lait"}
 
 		result, err := Fetch(context.Background(), Params{URL: "https://example.com/legacy.txt"}, client)
@@ -245,9 +213,6 @@ func TestFetch_PlainTextLegacyBytesDecodeWithoutError(t *testing.T) {
 	})
 }
 
-// TestFetch_PlainTextEmptyBodyReturnsEmpty asserts an empty raw-text body
-// passes through as empty content rather than erroring (empty files exist;
-// there is nothing to decode).
 func TestFetch_PlainTextEmptyBodyReturnsEmpty(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respCT: "text/plain; charset=utf-8", respBody: ""}
@@ -262,9 +227,6 @@ func TestFetch_PlainTextEmptyBodyReturnsEmpty(t *testing.T) {
 	}
 }
 
-// TestFetch_RawTextBothFormatsIdentical asserts that for a raw file the two
-// return_format values return the identical body: the document already is its
-// own model-friendly form, so markdown and text coincide (ADR-0006).
 func TestFetch_RawTextBothFormatsIdentical(t *testing.T) {
 	resetCache()
 	const body = "{\"schema\": 2, \"notes\": [\"a\", \"b\"]}\n"
@@ -286,9 +248,6 @@ func TestFetch_RawTextBothFormatsIdentical(t *testing.T) {
 	}
 }
 
-// TestFetch_RawTextCacheBehaviorUnchanged asserts the cache treats passthrough
-// results like extraction results: a repeated raw-text fetch is served from
-// cache (one HTTP call), and NoCache forces a fresh fetch.
 func TestFetch_RawTextCacheBehaviorUnchanged(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respCT: "text/plain; charset=utf-8", respBody: "cached raw body\n"}
@@ -312,9 +271,6 @@ func TestFetch_RawTextCacheBehaviorUnchanged(t *testing.T) {
 	}
 }
 
-// TestFetch_RawTextTimeoutStillApplies asserts the request timeout governs
-// raw-text fetches exactly like HTML ones — a hung host cannot block the
-// session behind a text URL.
 func TestFetch_RawTextTimeoutStillApplies(t *testing.T) {
 	client := &fakeHTTPClient{
 		respCT:   "text/plain; charset=utf-8",

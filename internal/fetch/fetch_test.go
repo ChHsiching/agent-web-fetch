@@ -9,11 +9,6 @@ import (
 	"time"
 )
 
-// fakeHTTPClient is a stand-in for a real HTTP client so tests never reach the
-// network. It records how many times Do was called, with which URL and headers,
-// and returns the configured body/status/content-type. Set err to simulate a
-// transport error; set delay to simulate a slow response that may exceed the
-// caller's timeout.
 type fakeHTTPClient struct {
 	calls       int
 	lastURL     string
@@ -63,9 +58,6 @@ func resetCache() {
 	defaultCache = newCache(DefaultCacheTTL)
 }
 
-// TestFetch_RejectsMalformedURL asserts the core T1 behaviour: a malformed URL
-// is rejected with a structured "invalid url" error AND no HTTP request is
-// issued. The fake client's call count is the proof that no request went out.
 func TestFetch_RejectsMalformedURL(t *testing.T) {
 	client := &fakeHTTPClient{}
 	params := Params{URL: "not a valid url"}
@@ -83,8 +75,6 @@ func TestFetch_RejectsMalformedURL(t *testing.T) {
 	}
 }
 
-// TestFetch_RejectsNonAbsoluteURL asserts that a URL missing a scheme or host
-// is also rejected: a Web Reader needs an absolute target, not a bare path.
 func TestFetch_RejectsNonAbsoluteURL(t *testing.T) {
 	cases := []string{"example.com", "/some/path", "ftp://files.example.com/x"}
 	for _, u := range cases {
@@ -99,9 +89,6 @@ func TestFetch_RejectsNonAbsoluteURL(t *testing.T) {
 	}
 }
 
-// TestFetch_AcceptsValidURL asserts that a well-formed absolute URL passes
-// validation and returns a non-nil result without error. (Raw-HTML retrieval
-// is asserted separately in TestFetch_ValidURLReturnsRawHTML.)
 func TestFetch_AcceptsValidURL(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{}
@@ -117,10 +104,6 @@ func TestFetch_AcceptsValidURL(t *testing.T) {
 	}
 }
 
-// TestFetch_ValidURLCallsClientOnce asserts the core retrieval behaviour: a
-// valid URL is fetched exactly once through the injected client with the
-// original URL. (Content shape — extracted markdown — is asserted in
-// TestFetch_ReturnsExtractedMarkdown and the extract tests.)
 func TestFetch_ValidURLCallsClientOnce(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respBody: "<html><body><article><h1>Hi</h1><p>Body text here.</p></article></body></html>"}
@@ -139,9 +122,6 @@ func TestFetch_ValidURLCallsClientOnce(t *testing.T) {
 	}
 }
 
-// TestFetch_SendsRealisticBrowserHeaders asserts that the outgoing request
-// carries headers that make it look like a real browser, so public sites with
-// light anti-bot defenses stay fetchable (per ADR-0002).
 func TestFetch_SendsRealisticBrowserHeaders(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respBody: "<html></html>"}
@@ -164,9 +144,6 @@ func TestFetch_SendsRealisticBrowserHeaders(t *testing.T) {
 	}
 }
 
-// TestFetch_ReturnsExtractedMarkdown asserts that Fetch runs the extraction
-// pipeline: given an article-type HTML response, it returns the extracted
-// title and markdown body (not raw HTML), with boilerplate dropped.
 func TestFetch_ReturnsExtractedMarkdown(t *testing.T) {
 	resetCache()
 	const articleHTML = `<!DOCTYPE html>
@@ -194,9 +171,6 @@ func TestFetch_ReturnsExtractedMarkdown(t *testing.T) {
 	}
 }
 
-// TestFetch_RepeatedCallHitsCache asserts the cache is wired into Fetch: a
-// second call to the same URL within TTL is served from cache, so the HTTP
-// client is not called a second time.
 func TestFetch_RepeatedCallHitsCache(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respBody: "<html><body><article><h1>C</h1><p>Body text that is long enough to be readable by the extractor.</p></article></body></html>"}
@@ -210,15 +184,13 @@ func TestFetch_RepeatedCallHitsCache(t *testing.T) {
 	}
 }
 
-// TestFetch_NoCacheBypassesCache asserts that Params.NoCache forces a fresh
-// fetch even when a cached entry exists for the URL.
 func TestFetch_NoCacheBypassesCache(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respBody: "<html><body><article><h1>C</h1><p>Body text that is long enough to be readable by the extractor.</p></article></body></html>"}
 	url := "https://example.com/nocache"
 
-	_, _ = Fetch(context.Background(), Params{URL: url}, client)                // populate
-	_, _ = Fetch(context.Background(), Params{URL: url, NoCache: true}, client) // bypass
+	_, _ = Fetch(context.Background(), Params{URL: url}, client)
+	_, _ = Fetch(context.Background(), Params{URL: url, NoCache: true}, client)
 
 	if client.calls != 2 {
 		t.Errorf("expected 2 HTTP calls with NoCache bypass, got %d", client.calls)

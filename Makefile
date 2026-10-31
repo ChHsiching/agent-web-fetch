@@ -13,7 +13,6 @@ DIST     := dist
 VERSION  ?= dev
 LDFLAGS  := -s -w -X github.com/ChHsiching/agent-web-fetch/internal/mcpserver.Version=$(VERSION)
 
-# The four target platforms. Each is GOOS/GOARCH.
 TARGETS := \
 	windows-amd64 \
 	darwin-amd64 \
@@ -22,7 +21,6 @@ TARGETS := \
 
 .PHONY: release clean test vet
 
-# release builds all four platform binaries into dist/.
 release: $(TARGETS)
 
 # Each target cross-compiles one binary and depends on the dist/ directory
@@ -45,7 +43,6 @@ darwin-arm64:
 linux-amd64:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/$(BINARY)-linux-amd64 $(CMD)
 
-# test / vet run the whole-module checks.
 test:
 	go test ./...
 

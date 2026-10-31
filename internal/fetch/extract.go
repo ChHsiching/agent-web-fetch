@@ -60,9 +60,6 @@ func extract(htmlDoc, baseURL, format string) (title, content string, err error)
 			return article.Title, md, nil
 		}
 	}
-	// Fallback: convert the whole document to markdown. The reader never
-	// returns empty output — even a document with no markdownable text yields
-	// a placeholder rather than an empty string.
 	md, fallbackErr := mdConverter.ConvertString(htmlDoc)
 	if fallbackErr != nil {
 		return "", "", fallbackErr

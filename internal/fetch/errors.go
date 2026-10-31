@@ -174,7 +174,6 @@ func IsSizeLimitExceededError(err error) bool {
 	return errors.As(err, &target)
 }
 
-// mbFloat converts a byte count to megabytes for error-message formatting.
 func mbFloat(b int64) float64 {
 	return float64(b) / float64(megabyte)
 }
@@ -195,9 +194,6 @@ func IsUnsupportedContentError(err error) bool {
 	return errors.As(err, &uce)
 }
 
-// classifyTransportErr turns a transport-level error into the structured error
-// the reader returns: timeouts become TimeoutError, everything else becomes a
-// wrapped FetchError. Used at both the request and body-read failure points.
 func classifyTransportErr(err error, url string) error {
 	if IsTimeoutError(err) {
 		return &TimeoutError{URL: url}
@@ -206,13 +202,10 @@ func classifyTransportErr(err error, url string) error {
 }
 
 // contentTypeIsHTML reports whether a Content-Type header value denotes HTML
-// (or XHTML, which the extractor also handles). The value is parsed with
-// mediaType — the single content-type parser, shared with the raw-text
-// classification — so every arm of the fetch switch dispatches on the same
-// normalized media type. Matching stays substring-based on the parsed media
-// type rather than exact equality so no historically accepted type is
-// dropped: bare "application/xhtml" and "application/xhtml+xml" both match,
-// exactly as under the pre-passthrough raw-header check.
+// (or XHTML, which the extractor also handles). Matching stays substring-based
+// on the parsed media type rather than exact equality so no historically
+// accepted type is dropped: bare "application/xhtml" and
+// "application/xhtml+xml" both match.
 func contentTypeIsHTML(ct string) bool {
 	media := mediaType(ct)
 	return strings.Contains(media, "text/html") || strings.Contains(media, "application/xhtml")

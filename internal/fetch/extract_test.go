@@ -5,9 +5,6 @@ import (
 	"testing"
 )
 
-// sampleArticleHTML is a pre-recorded, representative article page: a clear
-// main article with boilerplate (nav, footer, script) around it. Extraction
-// should keep the article body and title and drop the boilerplate.
 const sampleArticleHTML = `<!DOCTYPE html>
 <html><head><title>Real Article Title — Site</title></head>
 <body>
@@ -21,9 +18,6 @@ const sampleArticleHTML = `<!DOCTYPE html>
 <script>tracker();</script>
 </body></html>`
 
-// sampleListPageHTML is a page with no single main article — a list/index.
-// Readability should extract little/nothing here, triggering the full-document
-// fallback so the reader still returns useful content (never empty).
 const sampleListPageHTML = `<!DOCTYPE html>
 <html><head><title>Items — Index</title></head>
 <body>
@@ -34,8 +28,6 @@ const sampleListPageHTML = `<!DOCTYPE html>
 </ul>
 </body></html>`
 
-// sampleBlogHTML represents a blog post: dated, authored prose with headings.
-// Readability should keep the post body and drop the sidebar.
 const sampleBlogHTML = `<!DOCTYPE html>
 <html><head><title>Notes on Caching — Dev Blog</title></head>
 <body>
@@ -48,8 +40,6 @@ const sampleBlogHTML = `<!DOCTYPE html>
 </article>
 </body></html>`
 
-// sampleDocHTML represents a documentation page: a titled section with prose,
-// a code block, and a list of steps.
 const sampleDocHTML = `<!DOCTYPE html>
 <html><head><title>Installation — Acme Docs</title></head>
 <body>
@@ -66,15 +56,9 @@ const sampleDocHTML = `<!DOCTYPE html>
 </main>
 </body></html>`
 
-// sampleEmptyBodyHTML is a document with no markdownable text — only script
-// and style. Extraction must still return non-empty output (the never-empty
-// contract), via the placeholder.
 const sampleEmptyBodyHTML = `<!DOCTYPE html>
 <html><head><style>body{}</style><script>track();</script></head><body></body></html>`
 
-// TestExtract_ArticleReturnsTitleAndBody asserts the core T3 behaviour: given
-// an article-type HTML page, extract returns the article title and a markdown
-// body that contains the article's substance and preserves image URLs.
 func TestExtract_ArticleReturnsTitleAndBody(t *testing.T) {
 	title, body, err := extract(sampleArticleHTML, "https://example.com/article", formatMarkdown)
 
@@ -98,9 +82,6 @@ func TestExtract_ArticleReturnsTitleAndBody(t *testing.T) {
 	}
 }
 
-// TestExtract_FallsBackToFullDocument asserts that when extraction yields
-// little/no content (a list page with no main article), the full-document
-// fallback kicks in and the reader still returns non-empty useful content.
 func TestExtract_FallsBackToFullDocument(t *testing.T) {
 	_, body, err := extract(sampleListPageHTML, "https://example.com/items", formatMarkdown)
 
@@ -115,8 +96,6 @@ func TestExtract_FallsBackToFullDocument(t *testing.T) {
 	}
 }
 
-// TestExtract_BlogPost keeps the post body and drops the sidebar, covering the
-// "blog" representative page type.
 func TestExtract_BlogPost(t *testing.T) {
 	title, body, err := extract(sampleBlogHTML, "https://dev.example.com/caching", formatMarkdown)
 
@@ -134,8 +113,6 @@ func TestExtract_BlogPost(t *testing.T) {
 	}
 }
 
-// TestExtract_DocPage keeps the install steps and code block, covering the
-// "doc" representative page type.
 func TestExtract_DocPage(t *testing.T) {
 	title, body, err := extract(sampleDocHTML, "https://docs.example.com/install", formatMarkdown)
 
@@ -153,8 +130,6 @@ func TestExtract_DocPage(t *testing.T) {
 	}
 }
 
-// TestExtract_EmptyBodyReturnsPlaceholder asserts the never-empty contract: a
-// document with no markdownable text still returns non-empty output.
 func TestExtract_EmptyBodyReturnsPlaceholder(t *testing.T) {
 	_, body, err := extract(sampleEmptyBodyHTML, "https://example.com/blank", formatMarkdown)
 

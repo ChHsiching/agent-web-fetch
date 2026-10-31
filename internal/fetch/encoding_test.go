@@ -24,14 +24,11 @@ import (
 
 const gbkArticleBody = "这是一篇用 GBK 编码的中文文章正文内容，长度足以超过可读性提取的阈值。"
 
-// gbkArticleHTML wraps a Chinese body in a page whose <head> declares the
-// charset via <meta charset=...>. enc is the charset name to embed.
 func gbkArticleHTML(charset string) string {
 	return `<!DOCTYPE html><html><head><meta charset="` + charset + `"><title>中文标题</title></head><body><article><h1>中文标题</h1><p>` +
 		gbkArticleBody + `</p><p>补充段落让正文长度稳妥超过可读性阈值，走主提取路径而非全文回退。</p></article></body></html>`
 }
 
-// encodeGBK encodes a UTF-8 string as GBK bytes.
 func encodeGBK(s string) ([]byte, error) {
 	var buf bytes.Buffer
 	w := transform.NewWriter(&buf, simplifiedchinese.GBK.NewEncoder())
@@ -44,7 +41,6 @@ func encodeGBK(s string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// gbkClient serves raw GBK bytes with a configurable Content-Type header.
 type gbkClient struct {
 	body []byte
 	ct   string
@@ -58,7 +54,6 @@ func (c *gbkClient) Do(ctx context.Context, req *http.Request) (*http.Response, 
 	}, nil
 }
 
-// TestFetch_DecodesGBK_WithMetaCharset: GBK bytes + <meta charset=gbk>.
 func TestFetch_DecodesGBK_WithMetaCharset(t *testing.T) {
 	resetCache()
 	body, err := encodeGBK(gbkArticleHTML("gbk"))
@@ -75,8 +70,6 @@ func TestFetch_DecodesGBK_WithMetaCharset(t *testing.T) {
 	}
 }
 
-// TestFetch_DecodesGBK_OnlyHTTPHeader: GBK bytes, no <meta charset>, encoding
-// declared only via the HTTP Content-Type header.
 func TestFetch_DecodesGBK_OnlyHTTPHeader(t *testing.T) {
 	resetCache()
 	htmlNoMeta := `<!DOCTYPE html><html><head><title>中文标题</title></head><body><article><h1>中文标题</h1><p>` +
@@ -95,10 +88,6 @@ func TestFetch_DecodesGBK_OnlyHTTPHeader(t *testing.T) {
 	}
 }
 
-// TestFetch_DecodesGBK_NoCharsetDeclared: GBK bytes with zero charset
-// declaration anywhere — the parser must sniff the encoding. This is the
-// worst case (truly broken legacy sites); currently still handled, locked in
-// here so we notice if a future change drops the sniffer.
 func TestFetch_DecodesGBK_NoCharsetDeclared(t *testing.T) {
 	resetCache()
 	htmlNoMeta := `<!DOCTYPE html><html><head><title>中文标题</title></head><body><article><h1>中文标题</h1><p>` +

@@ -11,7 +11,6 @@ import (
 // enough to skip redundant re-fetches within a working session.
 const DefaultCacheTTL = time.Hour
 
-// cacheEntry is one cached Result with its expiry time.
 type cacheEntry struct {
 	result  *Result
 	expires time.Time
@@ -32,7 +31,6 @@ type cache struct {
 	entries map[string]cacheEntry
 }
 
-// newCache builds an empty in-memory cache with the given TTL.
 func newCache(ttl time.Duration) *cache {
 	return &cache{
 		ttl:     ttl,

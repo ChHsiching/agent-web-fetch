@@ -80,9 +80,6 @@ var browserHeaders = http.Header{
 	"Accept-Language": {"en-US,en;q=0.9"},
 }
 
-// defaultCache is the process-wide in-memory result cache. Entries expire after
-// DefaultCacheTTL; a process restart clears it. Honoured by Fetch unless
-// params.NoCache is set.
 var defaultCache = newCache(DefaultCacheTTL)
 
 // Fetch retrieves the content at params.URL. It validates the URL first: a
@@ -102,8 +99,6 @@ var defaultCache = newCache(DefaultCacheTTL)
 // during the fetch or extract path is recovered and returned as a PanicError,
 // so the process never crashes (ADR-0005).
 func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Result, err error) {
-	// Recover any panic so the server process stays alive. A crash-restart is
-	// itself a connection-failure risk (ADR-0005).
 	defer func() {
 		if r := recover(); r != nil {
 			result, err = nil, &PanicError{Recovered: r}
@@ -115,10 +110,6 @@ func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Resul
 		return nil, &InvalidURLError{URL: params.URL}
 	}
 
-	// Validate max_mb before any cache lookup or request: an out-of-range cap
-	// is a caller bug, and the agent should learn the ceiling immediately.
-	// Zero is valid at this seam (it selects the default cap); the MCP
-	// adapter passes zeroMeansDefault=false for the stricter tool rule.
 	if err := ValidateMaxMB(params.MaxMB, true); err != nil {
 		return nil, err
 	}
@@ -135,16 +126,11 @@ func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Resul
 		return nil, &InvalidReturnFormatError{Value: params.ReturnFormat}
 	}
 
-	// Serve from cache unless the caller forces a fresh fetch. The miss handler
-	// closes over ctx and client so the cache itself stays client-agnostic.
 	return defaultCache.get(params, params.NoCache, func(p Params) (*Result, error) {
 		return fetchUncached(ctx, p, client)
 	})
 }
 
-// fetchUncached performs a single live fetch + extract, with no cache. It is
-// the miss handler for Fetch's cache. All error types (HTTPError,
-// UnsupportedContentError, FetchError, TimeoutError) are produced here.
 func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Result, error) {
 	timeout := params.Timeout
 	if timeout <= 0 {
@@ -183,8 +169,6 @@ func fetchUncached(ctx context.Context, params Params, client HTTPClient) (*Resu
 		}
 	}
 
-	// Classify the response three ways (ADR-0006): HTML → extraction as
-	// today; raw text → passthrough verbatim; anything else → rejected.
 	ct := resp.Header.Get("Content-Type")
 	switch {
 	case contentTypeIsHTML(ct):
@@ -222,7 +206,6 @@ func effectiveMaxMB(maxMB int) int {
 	return maxMB
 }
 
-// limitFor returns the size cap in bytes for a max_mb value.
 func limitFor(maxMB int) int64 {
 	return int64(effectiveMaxMB(maxMB)) * megabyte
 }
@@ -249,7 +232,6 @@ func readBody(body io.Reader, url string, limitBytes int64) ([]byte, error) {
 }
 
 // isFetchableScheme reports whether a scheme is one the Web Reader will fetch.
-// Only http and https are supported; ftp, file, mailto, etc. are rejected.
 func isFetchableScheme(scheme string) bool {
 	switch strings.ToLower(scheme) {
 	case "http", "https":

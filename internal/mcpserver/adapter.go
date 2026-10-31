@@ -8,9 +8,6 @@ import (
 	"os"
 )
 
-// httpClientAdapter adapts the standard *http.Client to the fetch.HTTPClient
-// interface (which uses Do(ctx, *http.Request)). It exists because Fetch takes
-// its transport as an injected seam, and the real client is just net/http.
 type httpClientAdapter struct {
 	client *http.Client
 }
@@ -30,7 +27,6 @@ func configureLogging(logPath string) {
 	}
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		// Can't open the log file — stay silent rather than fall back to stdout.
 		log.SetOutput(io.Discard)
 		return
 	}

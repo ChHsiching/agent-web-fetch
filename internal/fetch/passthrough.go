@@ -10,18 +10,6 @@ import (
 	"golang.org/x/net/html/charset"
 )
 
-// This file implements the Passthrough path (CONTEXT.md): a response that is
-// already a raw text document is decoded to UTF-8 and returned verbatim — no
-// extraction, no wrapping, no reformatting. It is the path parallel to
-// Extraction (extract.go), taken when the body is already model-friendly
-// as-is (ADR-0006). Binary types never reach here; they stay rejected.
-
-// isRawTextContentType reports whether a Content-Type header value denotes a
-// raw text document. Per ADR-0006 the accepted types are: all text/* media
-// types; application/json and any +json suffix; application/xml and any +xml
-// suffix; application/yaml, application/x-yaml and any +yaml suffix; and
-// application/javascript. HTML/XHTML deliberately do not match — callers
-// classify those first so they keep taking the Extraction path.
 func isRawTextContentType(ct string) bool {
 	media := mediaType(ct)
 	if media == "" {
@@ -40,11 +28,6 @@ func isRawTextContentType(ct string) bool {
 		strings.HasSuffix(media, "+yaml")
 }
 
-// mediaType extracts the lowercase media type from a Content-Type header
-// value, dropping any parameters ("Text/Plain; charset=utf-8" → "text/plain").
-// It is the single content-type parser: both classification checks
-// (contentTypeIsHTML and isRawTextContentType) run on its output, so the
-// fetch switch dispatches on consistent input.
 func mediaType(ct string) string {
 	if i := strings.IndexByte(ct, ';'); i >= 0 {
 		ct = ct[:i]
@@ -52,9 +35,6 @@ func mediaType(ct string) string {
 	return strings.ToLower(strings.TrimSpace(ct))
 }
 
-// passthroughResult builds the verbatim result for a raw-text response: the
-// body decoded to UTF-8 becomes Content unchanged; Title comes from the URL
-// path basename.
 func passthroughResult(body []byte, contentType, rawURL string) (*Result, error) {
 	decoded, err := decodeBody(body, contentType)
 	if err != nil {

@@ -8,10 +8,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestServer_ToolRegisteredAndCallable runs the MCP server in-process over an
-// in-memory transport and exercises it with a real MCP client. This verifies
-// the protocol layer end-to-end (AC 1, 2) without touching the network: a fake
-// HTTP client stands in for the real one.
 func TestServer_ToolRegisteredAndCallable(t *testing.T) {
 	fake := &fakeFetchClient{body: "<html><body><article><h1>Real</h1><p>The article body is long enough to clear the readability extraction threshold used by the fetch module.</p></article></body></html>"}
 
@@ -31,7 +27,6 @@ func TestServer_ToolRegisteredAndCallable(t *testing.T) {
 	}
 	defer session.Close()
 
-	// AC 2: the fetch tool is registered with the expected name.
 	tools, err := session.ListTools(ctx, nil)
 	if err != nil {
 		t.Fatalf("ListTools: %v", err)
@@ -47,7 +42,6 @@ func TestServer_ToolRegisteredAndCallable(t *testing.T) {
 		t.Fatalf("fetch tool not registered; got tools: %v", tools.Tools)
 	}
 
-	// AC 1 + 3: call the tool end-to-end and get extracted content back.
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "fetch",
 		Arguments: map[string]any{
@@ -73,9 +67,6 @@ func TestServer_ToolRegisteredAndCallable(t *testing.T) {
 	}
 }
 
-// TestServer_ErrorsSurfacedAsToolResult asserts that a failed fetch comes back
-// as a tool result with IsError=true, not as a protocol error — so the model
-// can read why the fetch failed rather than the call being rejected.
 func TestServer_ErrorsSurfacedAsToolResult(t *testing.T) {
 	fake := &fakeFetchClient{err: errNetwork}
 
@@ -92,8 +83,6 @@ func TestServer_ErrorsSurfacedAsToolResult(t *testing.T) {
 	}
 	defer session.Close()
 
-	// A fetch failure must come back as a tool result (IsError), not a
-	// protocol error — so the model can read why it failed.
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "fetch",
 		Arguments: map[string]any{"url": "https://example.com/fail"},
@@ -106,11 +95,6 @@ func TestServer_ErrorsSurfacedAsToolResult(t *testing.T) {
 	}
 }
 
-// TestServer_ReportsVersionVar asserts the version in the initialize
-// handshake comes from the Version package variable, not a hardcoded string:
-// anything built without linker injection (local builds, CI) reports "dev",
-// and the release workflow's -ldflags -X overwrites it with the tag (spec
-// #16: a release can never ship reporting a stale version).
 func TestServer_ReportsVersionVar(t *testing.T) {
 	connectVersion := func(t *testing.T) string {
 		t.Helper()
@@ -143,7 +127,6 @@ func TestServer_ReportsVersionVar(t *testing.T) {
 	}
 }
 
-// errNetwork is a stand-in transport error for the failure-path test.
 var errNetwork = &networkErr{}
 
 type networkErr struct{}
