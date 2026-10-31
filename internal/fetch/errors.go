@@ -85,21 +85,43 @@ func (e *PanicError) Error() string {
 
 // InvalidMaxMBError is returned when the max_mb parameter falls outside its
 // allowed range: a positive integer no greater than the hard ceiling. The
-// message names the ceiling so the agent learns the boundary instead of
-// guessing (ADR-0007).
+// message names the accepted set of the surface that rejected the value so
+// the agent learns the boundary instead of guessing (ADR-0007).
 type InvalidMaxMBError struct {
 	MaxMB   int
 	Ceiling int
+	// ZeroMeansDefault records which surface rejected the value. The Go API
+	// treats 0 as "use the default cap" and never rejects it; the MCP tool
+	// surface rejects an explicit 0 because an absent field, not 0, means
+	// the default there. Error() names each surface's real accepted set so
+	// the message stays truthful at both boundaries.
+	ZeroMeansDefault bool
 }
 
 func (e *InvalidMaxMBError) Error() string {
-	return fmt.Sprintf("invalid max_mb %d: must be an integer from 1 to %d", e.MaxMB, e.Ceiling)
+	if e.ZeroMeansDefault {
+		return fmt.Sprintf("invalid max_mb %d: must be between 1 and %d, or 0 for the default cap", e.MaxMB, e.Ceiling)
+	}
+	return fmt.Sprintf("invalid max_mb %d: must be between 1 and %d", e.MaxMB, e.Ceiling)
 }
 
 // IsInvalidMaxMBError reports whether err is an InvalidMaxMBError.
 func IsInvalidMaxMBError(err error) bool {
 	var target *InvalidMaxMBError
 	return errors.As(err, &target)
+}
+
+// ValidateMaxMB is the single authority on which max_mb values are allowed,
+// called by both fetch.Fetch and the MCP adapter so the rule and its message
+// cannot drift between the layers (ADR-0007). zeroMeansDefault selects the
+// surface's rule: the Go API accepts 0 as "use the default cap", while the
+// MCP tool surface rejects an explicit 0 as a caller mistake and keeps only
+// its own pointer-based absent-vs-explicit distinction.
+func ValidateMaxMB(maxMB int, zeroMeansDefault bool) error {
+	if maxMB < 0 || maxMB > CeilingMB || (maxMB == 0 && !zeroMeansDefault) {
+		return &InvalidMaxMBError{MaxMB: maxMB, Ceiling: CeilingMB, ZeroMeansDefault: zeroMeansDefault}
+	}
+	return nil
 }
 
 // InvalidReturnFormatError is returned when the return_format parameter is
@@ -140,10 +162,10 @@ type SizeLimitExceededError struct {
 func (e *SizeLimitExceededError) Error() string {
 	if e.SizeKnown {
 		return fmt.Sprintf("size cap exceeded: document is %d bytes (%.1f MB), over the %.1f MB cap; raise max_mb (up to %d) or narrow the fetch. The body is never truncated",
-			e.SizeBytes, mbFloat(e.SizeBytes), mbFloat(e.LimitBytes), MaxMaxMB)
+			e.SizeBytes, mbFloat(e.SizeBytes), mbFloat(e.LimitBytes), CeilingMB)
 	}
 	return fmt.Sprintf("size cap exceeded: document exceeds the %.1f MB cap (stopped reading at %d bytes); raise max_mb (up to %d) or narrow the fetch. The body is never truncated",
-		mbFloat(e.LimitBytes), e.LimitBytes+1, MaxMaxMB)
+		mbFloat(e.LimitBytes), e.LimitBytes+1, CeilingMB)
 }
 
 // IsSizeLimitExceededError reports whether err is a SizeLimitExceededError.

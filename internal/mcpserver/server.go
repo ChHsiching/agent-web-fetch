@@ -97,11 +97,11 @@ func handleFetch(ctx context.Context, in toolInput, client fetch.HTTPClient) (*f
 		params.Timeout = d
 	}
 	if in.MaxMB != nil {
-		// The pointer distinguishes an explicit value from an absent one. Zero
-		// or negative is a caller mistake to reject (ADR-0007); values above
-		// the ceiling are rejected by fetch.Fetch with the ceiling named.
-		if *in.MaxMB <= 0 {
-			return nil, &fetch.InvalidMaxMBError{MaxMB: *in.MaxMB, Ceiling: fetch.MaxMaxMB}
+		// The pointer distinguishes an explicit value from an absent one; the
+		// rule itself (explicit 0 rejected, ADR-0007) lives in the shared
+		// fetch-layer validator so the message cannot drift between surfaces.
+		if err := fetch.ValidateMaxMB(*in.MaxMB, false); err != nil {
+			return nil, err
 		}
 		params.MaxMB = *in.MaxMB
 	}

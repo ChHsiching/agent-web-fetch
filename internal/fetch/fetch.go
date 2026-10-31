@@ -25,10 +25,10 @@ const DefaultTimeout = 30 * time.Second
 // needs go through max_mb, not the default (ADR-0007).
 const DefaultMaxMB = 2
 
-// MaxMaxMB is the hard ceiling on Params.MaxMB. 8 MB covers the ~4 MB a
+// CeilingMB is the hard ceiling on Params.MaxMB. 8 MB covers the ~4 MB a
 // 1M-token research context needs with headroom; beyond that the agent should
 // narrow the fetch instead (ADR-0007).
-const MaxMaxMB = 8
+const CeilingMB = 8
 
 // megabyte is the bytes-per-MB used everywhere the cap is computed. Powers of
 // two match how memory is usually quoted; the exact choice only matters for
@@ -40,7 +40,8 @@ const megabyte = 1 << 20
 // empty) or "text" (both case-insensitive; any other value is rejected with
 // InvalidReturnFormatError). NoCache requests a fresh fetch that bypasses the
 // cache. MaxMB sets the response size cap in MB (zero means DefaultMaxMB);
-// values outside 1..MaxMaxMB are rejected with InvalidMaxMBError.
+// negative values and values above CeilingMB are rejected with
+// InvalidMaxMBError.
 type Params struct {
 	URL          string
 	Timeout      time.Duration
@@ -116,8 +117,10 @@ func Fetch(ctx context.Context, params Params, client HTTPClient) (result *Resul
 
 	// Validate max_mb before any cache lookup or request: an out-of-range cap
 	// is a caller bug, and the agent should learn the ceiling immediately.
-	if params.MaxMB < 0 || params.MaxMB > MaxMaxMB {
-		return nil, &InvalidMaxMBError{MaxMB: params.MaxMB, Ceiling: MaxMaxMB}
+	// Zero is valid at this seam (it selects the default cap); the MCP
+	// adapter passes zeroMeansDefault=false for the stricter tool rule.
+	if err := ValidateMaxMB(params.MaxMB, true); err != nil {
+		return nil, err
 	}
 
 	// Validate and normalize return_format the same way: an unknown value is a
