@@ -162,7 +162,7 @@ func TestFetch_TextAndMarkdownCacheNeverCrossServes(t *testing.T) {
 // the max_mb validation philosophy (ADR-0007): reject with a typed error that
 // names the accepted values, before any request is issued.
 func TestFetch_UnknownReturnFormatRejected(t *testing.T) {
-	for _, value := range []string{"html", "plain", "TEXT "}{
+	for _, value := range []string{"html", "plain", "TEXT "} {
 		resetCache()
 		client := &fakeHTTPClient{respBody: sampleArticleHTML}
 
