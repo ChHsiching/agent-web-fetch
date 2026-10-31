@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"strconv"
 	"sync"
 	"time"
 )
@@ -17,10 +18,10 @@ type cacheEntry struct {
 }
 
 // cache is an in-memory TTL cache of fetch results, keyed by (url,
-// return_format). It is safe for concurrent use. There is no persistence: a
-// process restart clears it. Eviction is lazy (expired entries are overwritten
-// on next write); no background sweeper, keeping the maintenance surface at
-// zero per the spec.
+// return_format, max_mb). It is safe for concurrent use. There is no
+// persistence: a process restart clears it. Eviction is lazy (expired entries
+// are overwritten on next write); no background sweeper, keeping the
+// maintenance surface at zero per the spec.
 //
 // The cache holds no reference to any fetch strategy: the caller supplies the
 // miss handler at get-time, so the same cache serves any client/timeout
@@ -67,12 +68,18 @@ func (c *cache) get(params Params, forceFresh bool, onMiss func(Params) (*Result
 	return result, nil
 }
 
-// cacheKey is the composite key distinguishing url and return_format. Same URL
-// with a different format is a separate entry.
+// cacheKey is the composite key distinguishing url, return_format, and max_mb.
+// Same URL with a different format or size cap is a separate entry: a result
+// fetched under a 8 MB cap must never be served to a caller asking for the
+// 2 MB default (ADR-0007).
 func cacheKey(params Params) string {
 	format := params.ReturnFormat
 	if format == "" {
 		format = "markdown"
 	}
-	return format + "\x00" + params.URL
+	maxMB := params.MaxMB
+	if maxMB <= 0 {
+		maxMB = DefaultMaxMB
+	}
+	return format + "\x00" + params.URL + "\x00" + strconv.Itoa(maxMB)
 }
