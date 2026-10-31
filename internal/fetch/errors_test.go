@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-// TestFetch_TimeoutReturnsTimeoutError asserts that a fetch exceeding the
-// timeout returns a structured TimeoutError and does not hang.
 func TestFetch_TimeoutReturnsTimeoutError(t *testing.T) {
 	client := &fakeHTTPClient{
 		respBody: "<html><body><article><h1>Slow</h1><p>Body text that would arrive too late.</p></article></body></html>",
@@ -27,8 +25,6 @@ func TestFetch_TimeoutReturnsTimeoutError(t *testing.T) {
 	}
 }
 
-// TestFetch_Non2xxReturnsHTTPError asserts a non-2xx response surfaces as a
-// structured HTTPError carrying the status code, with no retry.
 func TestFetch_Non2xxReturnsHTTPError(t *testing.T) {
 	client := &fakeHTTPClient{respStatus: 404, respBody: "Not Found"}
 	params := Params{URL: "https://example.com/missing"}
@@ -53,8 +49,6 @@ func TestFetch_Non2xxReturnsHTTPError(t *testing.T) {
 	}
 }
 
-// TestFetch_TransportErrorReturnsFetchError asserts a transport failure surfaces
-// as a structured FetchError, not a raw error.
 func TestFetch_TransportErrorReturnsFetchError(t *testing.T) {
 	client := &fakeHTTPClient{err: errors.New("connection refused")}
 	params := Params{URL: "https://example.com/down"}
@@ -73,8 +67,6 @@ func TestFetch_TransportErrorReturnsFetchError(t *testing.T) {
 	}
 }
 
-// TestFetch_UnsupportedContentTypeReturnsError asserts that a non-HTML response
-// (e.g. a PDF) returns a clear UnsupportedContentError.
 func TestFetch_UnsupportedContentTypeReturnsError(t *testing.T) {
 	client := &fakeHTTPClient{respCT: "application/pdf", respBody: "%PDF-1.4 ..."}
 	params := Params{URL: "https://example.com/doc.pdf"}
@@ -89,16 +81,12 @@ func TestFetch_UnsupportedContentTypeReturnsError(t *testing.T) {
 	}
 }
 
-// TestFetch_PanicIsRecovered asserts that a panic during the fetch/extract path
-// is caught and returned as a tool-error, leaving the process alive.
 func TestFetch_PanicIsRecovered(t *testing.T) {
 	// A nil client panics on Do (nil pointer dereference). Fetch must recover.
 	params := Params{URL: "https://example.com/panic"}
 
 	var err error
 	var result *Result
-	// Run in a goroutine-free way: Fetch itself must defer recover so this
-	// call returns normally instead of crashing the test binary.
 	func() {
 		defer func() {
 			if r := recover(); r != nil {

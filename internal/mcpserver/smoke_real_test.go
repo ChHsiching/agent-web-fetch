@@ -12,9 +12,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestSmoke_RealNetworkFetch (run with: go test -tags=integration -run RealNetwork)
-// verifies the full pipeline against a live public site: real http.Client ->
-// Fetch -> extract -> tool result. Not run by default (depends on network).
 func TestSmoke_RealNetworkFetch(t *testing.T) {
 	deps := Deps{Client: &httpClientAdapter{client: &http.Client{Timeout: 30 * time.Second}}}
 	server := newServer(deps)

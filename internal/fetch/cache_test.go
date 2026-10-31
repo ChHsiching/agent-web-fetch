@@ -5,14 +5,10 @@ import (
 	"time"
 )
 
-// mkParams builds a Params with sensible defaults for cache tests.
 func mkParams(url string) Params {
 	return Params{URL: url, ReturnFormat: "markdown"}
 }
 
-// countingMiss returns an onMiss handler that counts calls and returns a
-// synthetic result, so tests can assert how many times the underlying fetch
-// ran.
 func countingMiss(calls *int) func(Params) (*Result, error) {
 	return func(p Params) (*Result, error) {
 		*calls++
@@ -20,9 +16,6 @@ func countingMiss(calls *int) func(Params) (*Result, error) {
 	}
 }
 
-// TestCache_HitAvoidsSecondCall asserts the core T5 behaviour: a repeat call
-// with the same (url, return_format) within TTL is served from cache, and the
-// miss handler is NOT invoked a second time.
 func TestCache_HitAvoidsSecondCall(t *testing.T) {
 	calls := 0
 	cache := newCache(time.Minute)
@@ -43,27 +36,24 @@ func TestCache_HitAvoidsSecondCall(t *testing.T) {
 	}
 }
 
-// TestCache_NoCacheForcesFresh asserts that forceFresh bypasses the cache and
-// forces a fresh fetch even when a cached entry exists.
 func TestCache_NoCacheForcesFresh(t *testing.T) {
 	calls := 0
 	cache := newCache(time.Minute)
 
-	_, _ = cache.get(mkParams("https://example.com/a"), false, countingMiss(&calls)) // populate
-	_, _ = cache.get(mkParams("https://example.com/a"), true, countingMiss(&calls))  // bypass
+	_, _ = cache.get(mkParams("https://example.com/a"), false, countingMiss(&calls))
+	_, _ = cache.get(mkParams("https://example.com/a"), true, countingMiss(&calls))
 
 	if calls != 2 {
 		t.Errorf("expected 2 fetches with forceFresh bypass, got %d", calls)
 	}
 }
 
-// TestCache_ExpiredEntryRefetches asserts that an entry past TTL is re-fetched.
 func TestCache_ExpiredEntryRefetches(t *testing.T) {
 	calls := 0
 	cache := newCache(5 * time.Millisecond)
 
 	_, _ = cache.get(mkParams("https://example.com/a"), false, countingMiss(&calls))
-	time.Sleep(20 * time.Millisecond) // past TTL
+	time.Sleep(20 * time.Millisecond)
 	_, _ = cache.get(mkParams("https://example.com/a"), false, countingMiss(&calls))
 
 	if calls != 2 {
@@ -71,8 +61,6 @@ func TestCache_ExpiredEntryRefetches(t *testing.T) {
 	}
 }
 
-// TestCache_KeyDistinguishesFormat asserts the cache key includes
-// return_format: same URL, different format, are separate entries.
 func TestCache_KeyDistinguishesFormat(t *testing.T) {
 	calls := 0
 	cache := newCache(time.Minute)

@@ -18,7 +18,6 @@ DIST="dist"
 VERSION="${VERSION:-dev}"
 LDFLAGS="-s -w -X github.com/ChHsiching/agent-web-fetch/internal/mcpserver.Version=${VERSION}"
 
-# Start from a clean dist/ so stale binaries from a prior run don't linger.
 rm -rf "$DIST"
 mkdir -p "$DIST"
 

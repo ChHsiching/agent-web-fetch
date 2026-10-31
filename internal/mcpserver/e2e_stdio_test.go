@@ -1,18 +1,5 @@
 //go:build e2e
 
-// End-to-end verification that the shipped artifact works as an MCP server:
-// TestMain builds the real cmd/agent-web-fetch binary, each test runs it as a
-// subprocess on the stdio transport (CommandTransport), drives it with a real
-// MCP client, and fetches from a local httptest server. This exercises every
-// layer the unit tests seam out (ADR-0005 row 8, ADR-0006): process startup,
-// stdout purity (any stray write would corrupt the ndjson framing), tool
-// registration, and the full fetch path through the real http.Client.
-//
-// Run with: go test -tags=e2e ./internal/mcpserver
-// Set AWF_E2E_REAL=1 to additionally hit a live raw.githubusercontent.com URL
-// (the exact scenario from issue #11); that case needs network and is skipped
-// by default like the integration-tagged tests.
-
 package mcpserver
 
 import (
@@ -29,7 +16,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// e2eBinary is the absolute path of the binary TestMain builds.
 var e2eBinary string
 
 func TestMain(m *testing.M) {
@@ -65,8 +51,6 @@ func e2eSession(t *testing.T) *mcp.ClientSession {
 	return session
 }
 
-// e2eCall fetches url through the live server process and returns the text of
-// the single content part plus the IsError flag.
 func e2eCall(t *testing.T, session *mcp.ClientSession, args map[string]any) (text string, isError bool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -85,7 +69,6 @@ func e2eCall(t *testing.T, session *mcp.ClientSession, args map[string]any) (tex
 	return tc.Text, res.IsError
 }
 
-// newE2EServer starts a local HTTP server; register routes before calling it.
 func newE2EServer(t *testing.T, handler http.Handler) *httptest.Server {
 	t.Helper()
 	ts := httptest.NewServer(handler)
@@ -115,8 +98,6 @@ func TestE2E_RawTextPassedThroughVerbatim(t *testing.T) {
 		t.Errorf("raw text was wrapped in code fences: %q", got)
 	}
 
-	// ADR-0006: both return_format values return identical content for raw
-	// files — assert it over the real transport, not just the seam.
 	gotText, isError := e2eCall(t, session, map[string]any{"url": ts.URL + "/readme.md?fmt=text", "return_format": "text"})
 	if isError {
 		t.Fatalf("raw text fetch with return_format=text failed: %s", gotText)
@@ -126,8 +107,6 @@ func TestE2E_RawTextPassedThroughVerbatim(t *testing.T) {
 	}
 }
 
-// TestE2E_JSONPassedThroughVerbatim covers the application/json arm of the
-// passthrough classification.
 func TestE2E_JSONPassedThroughVerbatim(t *testing.T) {
 	const body = `{"name": "agent-web-fetch", "issues": [11, 12, 13, 14]}` + "\n"
 	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -145,10 +124,7 @@ func TestE2E_JSONPassedThroughVerbatim(t *testing.T) {
 	}
 }
 
-// TestE2E_CharsetDecodedToUTF8 covers the decodeBody path over the wire: a
-// declared iso-8859-1 charset must be transcoded to UTF-8, verbatim otherwise.
 func TestE2E_CharsetDecodedToUTF8(t *testing.T) {
-	// "caf\xe9" — é as a single latin-1 byte, plus CRLF line endings kept.
 	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=iso-8859-1")
 		_, _ = w.Write([]byte("caf\xe9 menu\r\nsecond line\r\n"))
@@ -165,9 +141,6 @@ func TestE2E_CharsetDecodedToUTF8(t *testing.T) {
 	}
 }
 
-// TestE2E_HTMLStillExtracted guards the Extraction path (issue #11's "HTML
-// byte-for-byte unchanged" constraint): an HTML page still comes back as
-// extracted markdown, not verbatim source.
 func TestE2E_HTMLStillExtracted(t *testing.T) {
 	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -187,10 +160,6 @@ func TestE2E_HTMLStillExtracted(t *testing.T) {
 	}
 }
 
-// TestE2E_HTMLTextModeReturnsPlainText covers return_format: text on an HTML
-// page (spec #16) over the real transport: the same article page that comes
-// back as markdown by default must come back as plain text with no markdown
-// markers when text is requested. Text mode is real, not a documented lie.
 func TestE2E_HTMLTextModeReturnsPlainText(t *testing.T) {
 	const page = `<html><head><title>Plain Mode</title></head><body><article><h1>Plain Mode Heading</h1><p>The article body is long enough to clear the readability extraction threshold used by the fetch module, and it carries <strong>bold words</strong> plus <a href="https://example.com/x">a reference link</a> so markdown markers would show if any leaked.</p></article></body></html>`
 	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -212,9 +181,6 @@ func TestE2E_HTMLTextModeReturnsPlainText(t *testing.T) {
 		}
 	}
 
-	// The same URL under the default format must carry markdown markup: the
-	// two modes are genuinely different renderings (and, via the separate
-	// cache entries, never cross-served).
 	gotMarkdown, isError := e2eCall(t, session, map[string]any{"url": ts.URL + "/mode.html"})
 	if isError {
 		t.Fatalf("html default-format fetch failed: %s", gotMarkdown)
@@ -224,8 +190,6 @@ func TestE2E_HTMLTextModeReturnsPlainText(t *testing.T) {
 	}
 }
 
-// TestE2E_UnsupportedContentTypeStillRejected guards the rejection arm: a
-// binary type must come back as an IsError tool result, not content.
 func TestE2E_UnsupportedContentTypeStillRejected(t *testing.T) {
 	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
@@ -248,7 +212,7 @@ func TestE2E_UnsupportedContentTypeStillRejected(t *testing.T) {
 // read is what enforces the cap): the default 2 MB cap must reject it as an
 // IsError result naming the cap, and max_mb=3 must admit the same URL whole.
 func TestE2E_OversizedBodyRejectedThenAdmittedWithMaxMB(t *testing.T) {
-	body := strings.Repeat("e2e", 700*1024+100) // ~2.1 MB of repeated text
+	body := strings.Repeat("e2e", 700*1024+100)
 	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte(body))
@@ -280,9 +244,6 @@ func TestE2E_OversizedBodyRejectedThenAdmittedWithMaxMB(t *testing.T) {
 	}
 }
 
-// TestE2E_ToolDescriptionSurfacesPassthrough checks the #14 surface: the tool
-// description a client sees over the wire must tell the model that raw text
-// documents come back verbatim.
 func TestE2E_ToolDescriptionSurfacesPassthrough(t *testing.T) {
 	session := e2eSession(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -300,9 +261,6 @@ func TestE2E_ToolDescriptionSurfacesPassthrough(t *testing.T) {
 	}
 }
 
-// TestE2E_RealRawGithubUsercontent is the live reproduction of issue #11's
-// exact URL shape. Skipped unless AWF_E2E_REAL=1 so the suite stays
-// deterministic; the local-server tests above cover the behavior itself.
 func TestE2E_RealRawGithubUsercontent(t *testing.T) {
 	if os.Getenv("AWF_E2E_REAL") != "1" {
 		t.Skip("set AWF_E2E_REAL=1 to run the live raw.githubusercontent.com check")

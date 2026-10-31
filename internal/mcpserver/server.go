@@ -32,8 +32,6 @@ type toolInput struct {
 	MaxMB        *int   `json:"max_mb,omitempty" jsonschema:"Response size cap in MB. Defaults to 2, hard ceiling 8. Oversized responses are rejected with an error, never truncated."`
 }
 
-// Deps holds the injectable dependencies of the server, so tests can supply a
-// fake fetch client instead of the real one.
 type Deps struct {
 	Client fetch.HTTPClient
 }
@@ -45,8 +43,6 @@ type Deps struct {
 // without that flag (local, CI) report "dev" rather than a hand-edited string.
 var Version = "dev"
 
-// newServer builds an MCP server exposing a single "fetch" tool. The handler
-// closes over deps so it can be tested with an injected client.
 func newServer(deps Deps) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "agent-web-fetch", Version: Version}, nil)
 	mcp.AddTool(server, &mcp.Tool{
@@ -81,8 +77,6 @@ func newServer(deps Deps) *mcp.Server {
 	return server
 }
 
-// handleFetch maps the tool input to fetch.Params and calls Fetch. Isolated
-// from the MCP transport so it can be unit-tested.
 func handleFetch(ctx context.Context, in toolInput, client fetch.HTTPClient) (*fetch.Result, error) {
 	params := fetch.Params{
 		URL:          in.URL,
@@ -97,9 +91,6 @@ func handleFetch(ctx context.Context, in toolInput, client fetch.HTTPClient) (*f
 		params.Timeout = d
 	}
 	if in.MaxMB != nil {
-		// The pointer distinguishes an explicit value from an absent one; the
-		// rule itself (explicit 0 rejected, ADR-0007) lives in the shared
-		// fetch-layer validator so the message cannot drift between surfaces.
 		if err := fetch.ValidateMaxMB(*in.MaxMB, false); err != nil {
 			return nil, err
 		}

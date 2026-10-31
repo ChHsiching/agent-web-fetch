@@ -98,7 +98,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p assets
-          # Download every binary attached by the build matrix legs.
           gh release download "$GITHUB_REF_NAME" -D assets --repo "$GITHUB_REPOSITORY" \
             --pattern 'agent-web-fetch-*'
           # Produce a SHA256SUMS.txt in the "<sha256>  <filename>" format that

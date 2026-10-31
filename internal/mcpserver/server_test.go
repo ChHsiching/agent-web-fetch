@@ -13,8 +13,6 @@ import (
 
 var _ fetch.HTTPClient = (*fakeFetchClient)(nil)
 
-// fakeFetchClient records calls and returns canned HTML, satisfying
-// fetch.HTTPClient so handleFetch can be tested without the network.
 type fakeFetchClient struct {
 	calls   int
 	lastReq *http.Request
@@ -40,9 +38,6 @@ func (f *fakeFetchClient) Do(ctx context.Context, req *http.Request) (*http.Resp
 	}, nil
 }
 
-// TestHandleFetch_MapsParamsAndReturnsContent asserts handleFetch maps the
-// tool input to fetch.Params (URL, format, timeout) and returns the extracted
-// content.
 func TestHandleFetch_MapsParamsAndReturnsContent(t *testing.T) {
 	client := &fakeFetchClient{body: "<html><body><article><h1>Hi</h1><p>Body text long enough to pass the readability threshold for extraction.</p></article></body></html>"}
 
@@ -66,8 +61,6 @@ func TestHandleFetch_MapsParamsAndReturnsContent(t *testing.T) {
 	}
 }
 
-// TestHandleFetch_InvalidTimeoutReturnsError asserts a bad timeout string is
-// rejected cleanly rather than panicking.
 func TestHandleFetch_InvalidTimeoutReturnsError(t *testing.T) {
 	client := &fakeFetchClient{}
 
@@ -84,7 +77,6 @@ func TestHandleFetch_InvalidTimeoutReturnsError(t *testing.T) {
 	}
 }
 
-// TestHandleFetch_MalformedURLReturnsError asserts validation errors propagate.
 func TestHandleFetch_MalformedURLReturnsError(t *testing.T) {
 	client := &fakeFetchClient{}
 
@@ -98,9 +90,6 @@ func TestHandleFetch_MalformedURLReturnsError(t *testing.T) {
 	}
 }
 
-// TestHandleFetch_MaxMBRaisesSizeCap asserts max_mb flows through to the fetch
-// params: a 2.5 MB body, over the 2 MB default, is admitted when the tool call
-// raises the cap.
 func TestHandleFetch_MaxMBRaisesSizeCap(t *testing.T) {
 	const mb = 1 << 20
 	body := string(bytes.Repeat([]byte("b"), 2*fetch.DefaultMaxMB*mb+512*1024))
@@ -119,9 +108,6 @@ func TestHandleFetch_MaxMBRaisesSizeCap(t *testing.T) {
 	}
 }
 
-// TestHandleFetch_MaxMBAboveCeilingReturnsError asserts the adapter surfaces
-// the ceiling error from the fetch layer: max_mb=9 fails before any request,
-// with the ceiling named in the message.
 func TestHandleFetch_MaxMBAboveCeilingReturnsError(t *testing.T) {
 	client := &fakeFetchClient{}
 
@@ -141,9 +127,6 @@ func TestHandleFetch_MaxMBAboveCeilingReturnsError(t *testing.T) {
 	}
 }
 
-// TestHandleFetch_MaxMBNonPositiveReturnsError asserts an explicit zero or
-// negative max_mb (distinguishable from absent only through the pointer) is
-// rejected as an invalid parameter rather than silently becoming the default.
 func TestHandleFetch_MaxMBNonPositiveReturnsError(t *testing.T) {
 	for _, v := range []int{0, -2} {
 		client := &fakeFetchClient{}
@@ -162,5 +145,4 @@ func TestHandleFetch_MaxMBNonPositiveReturnsError(t *testing.T) {
 	}
 }
 
-// intPtr is a small helper for building the optional max_mb tool input.
 func intPtr(v int) *int { return &v }

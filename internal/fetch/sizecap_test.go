@@ -10,17 +10,6 @@ import (
 	"testing"
 )
 
-// These tests lock down the size cap (ADR-0007): a response body larger than
-// the active cap is rejected with a structured error stating the document's
-// size and the limit, never truncated. The cap defaults to 2 MB; max_mb raises
-// it for large-context consumers, hard-capped at 8. They exercise the same
-// public Fetch seam with the injected fake client as the fetch / errors /
-// passthrough tests. Over-limit bodies are built with bytes.Repeat so the
-// tests stay fast despite multi-megabyte fixtures.
-
-// TestFetch_MaxMBAboveCeilingRejected asserts that a max_mb above the hard
-// ceiling is rejected with an error naming the ceiling, before any request is
-// issued: the agent learns the boundary instead of guessing.
 func TestFetch_MaxMBAboveCeilingRejected(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respCT: "text/plain; charset=utf-8", respBody: "tiny"}
@@ -38,9 +27,6 @@ func TestFetch_MaxMBAboveCeilingRejected(t *testing.T) {
 	}
 }
 
-// TestFetch_MaxMBNegativeRejected asserts the invalid range below zero: a
-// negative cap would be nonsense (unlimited is deliberately not offered, the
-// ceiling is the escape hatch).
 func TestFetch_MaxMBNegativeRejected(t *testing.T) {
 	resetCache()
 	client := &fakeHTTPClient{respCT: "text/plain; charset=utf-8", respBody: "tiny"}
@@ -55,11 +41,8 @@ func TestFetch_MaxMBNegativeRejected(t *testing.T) {
 	}
 }
 
-// TestFetch_OversizedRawTextRejected asserts the core cap behaviour on the
-// Passthrough path: a raw-text body over the default 2 MB cap is rejected with
-// a SizeLimitExceededError carrying the limit, stating size and cap in the
-// message. The body is served with no Content-Length (the fake leaves it
-// unset), so the bounded read is what enforces the cap.
+// The body is served with no Content-Length (the fake leaves it unset), so
+// the bounded read is what enforces the cap.
 func TestFetch_OversizedRawTextRejected(t *testing.T) {
 	resetCache()
 	body := string(bytes.Repeat([]byte("a"), 2*megabyte+512))
@@ -85,9 +68,6 @@ func TestFetch_OversizedRawTextRejected(t *testing.T) {
 	}
 }
 
-// TestFetch_OversizedHTMLRejected asserts the cap protects the Extraction path
-// too: a giant HTML page is rejected with the same shaped error as a giant raw
-// file, before extraction ever runs.
 func TestFetch_OversizedHTMLRejected(t *testing.T) {
 	resetCache()
 	html := "<html><body><article><p>" + string(bytes.Repeat([]byte("paragraph "), 2*megabyte/10)) + "</p></article></body></html>"
@@ -110,8 +90,6 @@ func TestFetch_OversizedHTMLRejected(t *testing.T) {
 	}
 }
 
-// recordingBody is an io.ReadCloser that counts Read calls, so a test can
-// prove the body was never touched when Content-Length allows an early reject.
 type recordingBody struct {
 	reader io.Reader
 	reads  int
@@ -124,9 +102,6 @@ func (b *recordingBody) Read(p []byte) (int, error) {
 
 func (b *recordingBody) Close() error { return nil }
 
-// contentLengthClient is a minimal fake (in the gbkClient tradition) whose
-// response carries an explicit ContentLength and a recording body, proving
-// whether the fetch path read from the body at all.
 type contentLengthClient struct {
 	contentLength int64
 	body          *recordingBody
@@ -141,9 +116,6 @@ func (c *contentLengthClient) Do(ctx context.Context, req *http.Request) (*http.
 	}, nil
 }
 
-// TestFetch_ContentLengthRejectsBeforeRead asserts the early-reject arm: when
-// Content-Length declares an over-cap document, the error is returned before a
-// single body byte is read, with the declared size in the error.
 func TestFetch_ContentLengthRejectsBeforeRead(t *testing.T) {
 	resetCache()
 	const declared = int64(3*megabyte) + 12345
@@ -172,9 +144,6 @@ func TestFetch_ContentLengthRejectsBeforeRead(t *testing.T) {
 	}
 }
 
-// TestFetch_MaxMBOptOutAdmitsLargeDocument asserts the opt-out: a document
-// between the default cap and the ceiling (here 2.5 MB under max_mb=8) comes
-// back whole and verbatim. The cap is raised, the body is not clipped.
 func TestFetch_MaxMBOptOutAdmitsLargeDocument(t *testing.T) {
 	resetCache()
 	body := string(bytes.Repeat([]byte("z"), 2*megabyte+512*1024))
@@ -190,11 +159,7 @@ func TestFetch_MaxMBOptOutAdmitsLargeDocument(t *testing.T) {
 	}
 }
 
-// TestFetch_MaxMBCacheNeverCrossServes asserts max_mb participates in the
-// cache key: a document admitted under a raised cap (2.5 MB with max_mb=3) is
-// not served to a default-cap fetch of the same URL, which must re-fetch and
-// reject. The reverse order is covered by construction: errors are never
-// cached.
+// The reverse order is covered by construction: errors are never cached.
 func TestFetch_MaxMBCacheNeverCrossServes(t *testing.T) {
 	resetCache()
 	body := string(bytes.Repeat([]byte("q"), 2*megabyte+512*1024))
@@ -211,7 +176,6 @@ func TestFetch_MaxMBCacheNeverCrossServes(t *testing.T) {
 		t.Fatalf("second identical-cap fetch should hit cache, got %d call(s)", client.calls)
 	}
 
-	// Default cap on the same URL: must NOT receive the 3 MB-cap entry.
 	_, err := Fetch(context.Background(), Params{URL: url}, client)
 	if !IsSizeLimitExceededError(err) {
 		t.Fatalf("default-cap fetch of the same URL must reject, got result from cache or wrong error: %v", err)
