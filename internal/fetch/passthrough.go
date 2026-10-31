@@ -15,6 +15,9 @@ func isRawTextContentType(ct string) bool {
 	if media == "" {
 		return false
 	}
+	if contentTypeIsHTML(ct) {
+		return false
+	}
 	if strings.HasPrefix(media, "text/") {
 		return true
 	}
