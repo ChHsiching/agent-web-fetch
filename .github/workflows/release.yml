@@ -62,7 +62,13 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           mkdir -p dist
-          go build -trimpath -ldflags "-s -w" -o "dist/${{ matrix.asset }}" ./cmd/agent-web-fetch
+          # Inject the pushed tag (e.g. v0.2.0) into the server version so a
+          # release binary never reports a stale or "dev" version. Tags carry
+          # the v prefix the server has always reported, so GITHUB_REF_NAME is
+          # passed through as-is.
+          go build -trimpath \
+            -ldflags "-s -w -X github.com/ChHsiching/agent-web-fetch/internal/mcpserver.Version=${GITHUB_REF_NAME}" \
+            -o "dist/${{ matrix.asset }}" ./cmd/agent-web-fetch
 
       - name: Upload asset to the release
         uses: softprops/action-gh-release@v2
@@ -132,7 +138,7 @@ jobs:
             echo "git clone https://github.com/${{ github.repository }}"
             echo "cd ${{ github.event.repository.name }}"
             echo "git checkout $TAG"
-            echo "./build.sh   # produces the same four binaries in dist/"
+            echo "VERSION=\"$TAG\" ./build.sh   # produces the same four binaries in dist/"
             echo '```'
             echo
             echo "Build run: https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
