@@ -187,6 +187,43 @@ func TestE2E_HTMLStillExtracted(t *testing.T) {
 	}
 }
 
+// TestE2E_HTMLTextModeReturnsPlainText covers return_format: text on an HTML
+// page (spec #16) over the real transport: the same article page that comes
+// back as markdown by default must come back as plain text with no markdown
+// markers when text is requested — text mode is real, not a documented lie.
+func TestE2E_HTMLTextModeReturnsPlainText(t *testing.T) {
+	const page = `<html><head><title>Plain Mode</title></head><body><article><h1>Plain Mode Heading</h1><p>The article body is long enough to clear the readability extraction threshold used by the fetch module, and it carries <strong>bold words</strong> plus <a href="https://example.com/x">a reference link</a> so markdown markers would show if any leaked.</p></article></body></html>`
+	ts := newE2EServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(page))
+	}))
+	session := e2eSession(t)
+
+	gotText, isError := e2eCall(t, session, map[string]any{"url": ts.URL + "/mode.html", "return_format": "text"})
+	if isError {
+		t.Fatalf("html text-mode fetch failed: %s", gotText)
+	}
+	if !strings.Contains(gotText, "long enough to clear the readability") {
+		t.Errorf("text mode missing article substance: %q", gotText)
+	}
+	for _, marker := range []string{"# ", "**", "](https://example.com/x"} {
+		if strings.Contains(gotText, marker) {
+			t.Errorf("text mode must not contain markdown marker %q: %q", marker, gotText)
+		}
+	}
+
+	// The same URL under the default format must carry markdown markup: the
+	// two modes are genuinely different renderings (and, via the separate
+	// cache entries, never cross-served).
+	gotMarkdown, isError := e2eCall(t, session, map[string]any{"url": ts.URL + "/mode.html"})
+	if isError {
+		t.Fatalf("html default-format fetch failed: %s", gotMarkdown)
+	}
+	if !strings.Contains(gotMarkdown, "**bold words**") && !strings.Contains(gotMarkdown, "# Plain Mode Heading") {
+		t.Errorf("default format should be markdown with markup; got: %q", gotMarkdown)
+	}
+}
+
 // TestE2E_UnsupportedContentTypeStillRejected guards the rejection arm: a
 // binary type must come back as an IsError tool result, not content.
 func TestE2E_UnsupportedContentTypeStillRejected(t *testing.T) {
