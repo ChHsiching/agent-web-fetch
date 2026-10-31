@@ -30,8 +30,8 @@ func TestFetch_MaxMBAboveCeilingRejected(t *testing.T) {
 	if !IsInvalidMaxMBError(err) {
 		t.Fatalf("expected InvalidMaxMBError for max_mb=9, got %T %v", err, err)
 	}
-	if !strings.Contains(err.Error(), "8") {
-		t.Errorf("error should name the ceiling 8, got %q", err.Error())
+	if !strings.Contains(err.Error(), "between 1 and 8") {
+		t.Errorf("error should name the accepted range 1 to 8, got %q", err.Error())
 	}
 	if client.calls != 0 {
 		t.Errorf("expected no HTTP request for invalid max_mb, got %d call(s)", client.calls)
